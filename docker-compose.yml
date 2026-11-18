@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shigeru_hr}
+      POSTGRES_USER: ${POSTGRES_USER:-shigeru_hr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di file .env}
+      TZ: Asia/Jakarta
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-shigeru_hr}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-shigeru_hr}
+      PORT: 3000
+      TZ: Asia/Jakarta
+      SEED_ON_EMPTY: ${SEED_ON_EMPTY:-true}
+      ADMS_BRIDGE_URL: ${ADMS_BRIDGE_URL:-}
+      ADMS_BRIDGE_KEY: ${ADMS_BRIDGE_KEY:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Taruh file .xlsx hasil download Google Sheets di folder ./data-import untuk diimpor.
+      - ./data-import:/import:ro
+
+volumes:
+  db-data:

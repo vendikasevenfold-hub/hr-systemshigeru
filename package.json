@@ -1,0 +1,21 @@
+{
+  "name": "shigeru-hr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shigeru HR - PT Mideli Makmur Jaya. Self-hosted (Node.js + PostgreSQL), dipindahkan dari Google Apps Script.",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "import-xlsx": "node scripts/import-xlsx.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "express": "4.21.2",
+    "pg": "8.13.1"
+  }
+}
