@@ -4,7 +4,7 @@ process.env.TZ = 'Asia/Jakarta';
 const test = require('node:test');
 const assert = require('node:assert');
 const { Workbook } = require('../server/workbook');
-const { loadGas, formatDate } = require('../server/gas-runtime');
+const { loadGas, formatDate, sessionOwner } = require('../server/gas-runtime');
 const { encodeRows, decodeCell } = require('../server/store');
 
 const wb = new Workbook();
@@ -42,8 +42,14 @@ test('login, sesi, dan manajemen user', () => {
   assert.match(list[1].createdAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
   assert.deepStrictEqual(g.getManagerList('MOD').map((m) => m.username), ['mgr1']);
 
+  // Token dari loginUser dikenali server (dipakai untuk mewajibkan login di /api/run)
+  assert.strictEqual(sessionOwner(res.token), 'admin');
+  assert.strictEqual(sessionOwner('token-palsu'), null);
+  assert.strictEqual(sessionOwner(undefined), null);
+
   g.logoutSession(res.token);
   assert.strictEqual(g.validateSession(res.token, 'admin'), false);
+  assert.strictEqual(sessionOwner(res.token), null);
 });
 
 test('alur lembur: buat -> setujui manager -> setujui HRD', () => {

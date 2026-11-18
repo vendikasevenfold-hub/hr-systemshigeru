@@ -192,4 +192,18 @@ function loadGas(workbook) {
   return new Set(callable);
 }
 
-module.exports = { loadGas, formatDate };
+/**
+ * Cek token sesi yang dibuat createSession_() di Code.gs (disimpan di CacheService dengan
+ * kunci "sess_<token>"). Kembalikan username pemilik token, atau null bila tidak sah.
+ * Token yang sah diperpanjang 6 jam, sama seperti validateSession() di Code.gs.
+ */
+const SESSION_TTL_SEC = 6 * 60 * 60;
+function sessionOwner(token) {
+  if (!token || typeof token !== 'string') return null;
+  const owner = scriptCache.get('sess_' + token);
+  if (!owner) return null;
+  scriptCache.put('sess_' + token, owner, SESSION_TTL_SEC);
+  return owner;
+}
+
+module.exports = { loadGas, formatDate, sessionOwner };

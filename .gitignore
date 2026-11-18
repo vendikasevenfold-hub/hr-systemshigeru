@@ -3,3 +3,6 @@ node_modules/
 data-import/*
 !data-import/.gitkeep
 *.log
+*.dump
+backup*.sql
+logs/
