@@ -1,0 +1,3382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Shigeru HR - PT Mideli Makmur Jaya</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Pengganti google.script.run: memanggil server Node.js (lihat public/gas-client.js) -->
+  <script src="/gas-client.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              500: '#008bca',
+              600: '#007ab3',
+              700: '#006696',
+              900: '#003e5c'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .stacked-cell { display: flex; flex-direction: column; }
+    .sidebar-item-active { background-color: #f0f9ff; color: #008bca; font-weight: 600; border-right: 4px solid #008bca; }
+
+    /* Brand Shigeru — sama dengan Shigeru Console (shigeru-platform):
+       cakram Shigeru Red dengan glyph 繁, "Shigeru" tebal + sub mono huruf kapital. */
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 30px; height: 30px; flex: none; border-radius: 50%;
+      background: #f54442; color: #ffffff;
+      display: grid; place-items: center;
+      font-family: 'Source Sans 3', 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 15px; font-weight: 700; line-height: 1;
+    }
+    .brand-glyph { display: block; font-style: normal; transform: translate(1px, 1px); }
+    .brand-name { font-family: 'Source Sans 3', 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+    .brand-sub { font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6f6f; }
+    .authbrand { justify-content: center; gap: 12px; }
+    .authbrand .brand-mark { width: 38px; height: 38px; font-size: 19px; }
+    .authbrand .brand-name { font-size: 20px; color: #333333; }
+    header .brand-sub { color: rgba(255, 255, 255, 0.8); }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased">
+
+  <!-- PORTAL LOGIN -->
+  <div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-sky-900">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <h1 class="brand authbrand mb-2">
+          <span class="brand-mark" aria-hidden="true"><i class="brand-glyph">繁</i></span>
+          <span>
+            <span class="brand-name">Shigeru</span> <span class="brand-sub">HR</span>
+          </span>
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">PT Mideli Makmur Jaya</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
+          <input type="text" id="loginUsername" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-brand-500 outline-none" placeholder="Masukkan username">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+          <input type="password" id="loginPassword" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-brand-500 outline-none" placeholder="••••••••">
+        </div>
+        <button type="submit" id="btnLogin" class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl transition text-sm shadow-md">
+          Masuk ke Portal
+        </button>
+      </form>
+      <div id="loginAlert" class="mt-4 hidden p-3 rounded-lg text-xs font-medium text-center"></div>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION LAYOUT -->
+  <div id="appView" class="hidden min-h-screen flex flex-col">
+    
+    <!-- TOP HEADER BAR -->
+    <header class="bg-brand-500 text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow">
+      <div class="flex items-center space-x-4">
+        <button onclick="toggleSidebar()" class="text-white hover:text-slate-200 text-lg"><i class="fa-solid fa-bars"></i></button>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i class="brand-glyph">繁</i></span>
+          <span>
+            <span class="brand-name">Shigeru</span> <span class="brand-sub">HR</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4 text-xs">
+        <span class="bg-white/20 px-3 py-1 rounded-md hidden sm:inline">PT Mideli Makmur Jaya</span>
+        <div class="flex items-center space-x-2 pl-2 border-l border-white/20">
+          <div class="w-8 h-8 rounded-full bg-white text-brand-500 font-bold flex items-center justify-center">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <div class="hidden sm:block">
+            <div id="userDisplayName" class="font-bold">Admin</div>
+            <div id="userDisplayRole" class="text-[10px] text-white/80">Role Admin</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- BODY WRAPPER -->
+    <div class="flex pt-14 flex-1">
+      
+      <!-- LEFT SIDEBAR NAVIGATION -->
+      <aside id="sidebarNav" class="w-64 bg-white border-r border-slate-200 flex flex-col fixed top-14 bottom-0 left-0 z-30 transition-all duration-300">
+        <div class="p-4 border-b border-slate-100 flex items-center space-x-3 bg-slate-50">
+          <div class="w-10 h-10 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center text-lg font-bold">
+            <i class="fa-solid fa-id-badge"></i>
+          </div>
+          <div>
+            <div id="sbUsername" class="font-bold text-sm text-slate-800">admin</div>
+            <div id="sbRole" class="text-xs text-brand-500 font-medium">Admin</div>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-3 space-y-4 text-xs">
+          <div>
+            <div class="px-4 font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Kepegawaian</div>
+            <button onclick="switchTab('master-karyawan')" id="nav-master-karyawan" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-address-book w-4"></i><span>Data Master Karyawan</span>
+            </button>
+          </div>
+
+          <div>
+            <div class="px-4 font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Lembur (Overtime)</div>
+            <button onclick="openModal('modalLembur')" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-clock-rotate-left w-4 text-brand-500"></i><span>Form Lembur</span>
+            </button>
+            <button onclick="switchTab('lembur')" id="nav-lembur" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-business-time w-4"></i><span>Data Lembur &amp; Realisasi</span>
+            </button>
+          </div>
+
+          <div>
+            <div class="px-4 font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Input Data Attendance - Absensi</div>
+            <button onclick="switchTab('input-bulanan')" id="nav-input-bulanan" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-pen-to-square w-4 text-emerald-600"></i><span>Input Data Bulanan</span>
+            </button>
+            <button onclick="switchTab('absensi')" id="nav-absensi" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-fingerprint w-4 text-indigo-500"></i><span>Absensi (ADMS)</span>
+            </button>
+          </div>
+
+          <div>
+            <div class="px-4 font-bold text-slate-400 uppercase tracking-wider text-[10px] mb-1">Pengaturan Sistem</div>
+            <button onclick="switchTab('users')" id="nav-users" class="w-full px-4 py-2 flex items-center space-x-3 text-slate-600 hover:bg-slate-50">
+              <i class="fa-solid fa-user-shield w-4 text-brand-500"></i><span>Manajemen User</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-3 border-t border-slate-200">
+          <button onclick="logout()" class="w-full px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition text-xs font-semibold flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- CONTENT CONTAINER -->
+      <main class="flex-1 ml-64 p-6 overflow-x-hidden">
+
+        <!-- 10. MODUL MANAJEMEN PENGGUNA (CREATE LOGIN USER) -->
+<section id="tab-users" class="tab-content hidden space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h3 class="text-lg font-bold text-slate-900">Manajemen Pengguna & Akun Login</h3>
+      <p class="text-xs text-slate-500">Pendaftaran akun baru dan pengelolaan hak akses pengguna sistem.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- FORM INPUT / EDIT USER -->
+<div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 lg:col-span-1 h-fit">
+  <h4 id="formUserTitle" class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+    <i class="fa-solid fa-user-plus text-brand-500"></i> Buat Akun User Baru
+  </h4>
+  <form onsubmit="handleSaveUser(event)" id="formCreateUser" class="space-y-3">
+    <!-- Hidden Input untuk menyimpan ID saat mode Edit -->
+    <input type="hidden" id="usrId" value="">
+
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+      <input type="text" id="usrUsername" required placeholder="Contoh: hrd_jkt" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Email Karyawan</label>
+      <input type="email" id="usrEmail" required placeholder="nama@midelimakmurjaya.co.id" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+      <div class="relative">
+        <input type="password" id="usrPassword" required placeholder="••••••••" class="w-full pl-3 pr-10 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+        <button type="button" id="btnTogglePwd" onclick="toggleUserPassword()" title="Tampilkan / sembunyikan password" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-slate-700"><i class="fa-solid fa-eye"></i></button>
+      </div>
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Role / Hak Akses</label>
+      <select id="usrRole" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 focus:ring-2 focus:ring-brand-500 outline-none font-semibold">
+        <option value="Admin">Admin</option>
+        <option value="HR">HR</option>
+        <option value="Manager">Manager</option>
+        <option value="MOD">MOD</option>
+      </select>
+    </div>
+
+    <div class="flex gap-2 pt-2">
+      <button type="submit" id="btnSaveUser" class="flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-lg transition text-xs shadow">
+        <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan User
+      </button>
+      <button type="button" id="btnCancelEdit" onclick="resetUserForm()" class="hidden px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg transition text-xs">
+        Batal
+      </button>
+    </div>
+  </form>
+</div>
+
+    <!-- TABEL DAFTAR USER -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden lg:col-span-2">
+      <div class="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          <i class="fa-solid fa-list text-brand-500 mr-1"></i> Daftar User Aktif
+        </h4>
+        <button onclick="loadUsersList()" class="text-xs text-brand-500 hover:underline flex items-center gap-1 font-semibold">
+          <i class="fa-solid fa-rotate-right"></i> Refresh
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs text-left text-slate-600">
+          <thead class="text-slate-700 uppercase bg-slate-100 border-b">
+            <tr>
+              <th class="px-4 py-3">ID User</th>
+              <th class="px-4 py-3">Username & Email</th>
+              <th class="px-4 py-3">Role</th>
+              <th class="px-4 py-3">Tgl Dibuat</th>
+              <th class="px-4 py-3 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tblUsersBody">
+            <tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat data user...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <!-- PANEL HAK AKSES PER MODUL & FITUR (KHUSUS ADMIN) -->
+  <div id="permAdminPanel" class="hidden bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+      <div>
+        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-brand-500"></i> Hak Akses per Modul & Fitur
+        </h4>
+        <p class="text-[11px] text-slate-500 mt-1">Atur modul/fitur apa saja yang terbuka untuk tiap Role, atau buat pengecualian khusus untuk satu user tertentu.</p>
+      </div>
+      <button onclick="loadPermissionsUI()" class="text-xs text-brand-500 hover:underline flex items-center gap-1 font-semibold">
+        <i class="fa-solid fa-rotate-right"></i> Refresh
+      </button>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-slate-100">
+      <span class="text-[11px] font-semibold text-slate-500 mr-1">Atur untuk Role:</span>
+      <button id="permRoleTab-Admin" onclick="permSwitchScopeRole('Admin')" class="perm-role-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500 text-white">Admin</button>
+      <button id="permRoleTab-HR" onclick="permSwitchScopeRole('HR')" class="perm-role-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">HR</button>
+      <button id="permRoleTab-Manager" onclick="permSwitchScopeRole('Manager')" class="perm-role-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">Manager</button>
+      <button id="permRoleTab-MOD" onclick="permSwitchScopeRole('MOD')" class="perm-role-tab px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600">MOD</button>
+
+      <span class="text-[11px] font-semibold text-slate-500 ml-4 mr-1">Atau Override per User:</span>
+      <select id="permUserSelect" onchange="permSwitchScopeUser()" class="px-2 py-1.5 rounded-lg border border-slate-300 text-xs">
+        <option value="">-- Pilih User --</option>
+      </select>
+    </div>
+
+    <div id="permMatrixContainer" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <p class="text-xs text-slate-400 italic p-4">Memuat data hak akses...</p>
+    </div>
+
+    <div id="permLokasiBox" class="mt-4 border border-slate-200 rounded-xl p-3">
+      <div class="text-xs font-bold text-slate-800 mb-1 flex items-center gap-2"><i class="fa-solid fa-location-dot text-brand-500"></i> Akses Lokasi</div>
+      <p class="text-[11px] text-slate-500 mb-2">Batasi lokasi yang datanya boleh dilihat (Data Master Karyawan, Input Bulanan, Absensi, Lembur, dll). Role Admin selalu semua lokasi.</p>
+      <div id="permLokasiMode" class="flex flex-wrap gap-4 text-xs mb-2"></div>
+      <div id="permLokasiPicker" class="hidden">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+          <input type="text" id="permLokasiCari" oninput="permLokasiRender()" placeholder="Cari lokasi..." class="border rounded-lg px-3 py-1.5 text-xs w-56">
+          <button type="button" onclick="permLokasiPilihSemua(true)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-600">Pilih semua</button>
+          <button type="button" onclick="permLokasiPilihSemua(false)" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold text-slate-600">Kosongkan</button>
+          <span id="permLokasiCount" class="text-[11px] text-slate-500"></span>
+        </div>
+        <div id="permLokasiList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+
+    <div id="permSaveBar" class="hidden mt-4 pt-4 border-t border-slate-100 flex justify-end">
+      <button id="btnSavePermissions" onclick="savePermissionsChanges()" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg transition text-xs shadow">
+        <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan Hak Akses
+      </button>
+    </div>
+  </div>
+</section>
+
+        <!-- 4. DAFTAR LEMBUR & REALISASI -->
+<section id="tab-lembur" class="tab-content hidden space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h3 class="text-lg font-bold text-slate-900">Daftar Pengajuan & Realisasi Lembur</h3>
+      <p class="text-xs text-slate-500">Kelola pengajuan lembur karyawan, persetujuan manager, dan realisasi jam kerja.</p>
+    </div>
+    <button onclick="openModal('modalLembur')" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition flex items-center space-x-1 w-fit shadow">
+      <i class="fa-solid fa-clock"></i><span>Ajukan Lembur</span>
+    </button>
+  </div>
+
+  <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
+    <div class="flex items-center space-x-2 w-full md:w-1/2">
+      <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
+      <input type="text" id="filterLemburKaryawan" onkeyup="filterLemburTable()" placeholder="Cari berdasarkan Nama, ID Karyawan, atau Outlet..." class="w-full text-xs p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-brand-500">
+    </div>
+    <select id="filterLemburStatus" onchange="filterLemburTable()" class="text-xs p-2.5 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-brand-500 bg-white w-full md:w-auto">
+      <option value="">Semua Status</option>
+      <option value="PEND_MGR">Pending Manager</option>
+      <option value="PEND_HRD">Pending Approval HRD</option>
+      <option value="SETUJU">Disetujui</option>
+      <option value="TOLAK">Ditolak</option>
+    </select>
+    <button onclick="openExportLembur()" id="btnExportLembur" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition flex items-center space-x-2 w-full md:w-auto justify-center shadow">
+      <i class="fa-solid fa-file-excel"></i><span>Export Laporan Lembur (Excel)</span>
+    </button>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+    <table class="w-full text-xs text-left text-slate-600 min-w-[1100px]">
+      <thead class="text-slate-700 uppercase bg-slate-100 border-b font-semibold">
+        <tr>
+          <th class="px-4 py-3">ID & Tgl Pengajuan</th>
+          <th class="px-4 py-3">Karyawan</th>
+          <th class="px-4 py-3">Outlet & Periode</th>
+          <th class="px-4 py-3">Jadwal Lembur</th>
+          <th class="px-4 py-3">Keterangan</th>
+          <th class="px-4 py-3">Status Approval</th>
+          <th class="px-4 py-3">Realisasi Jam</th>
+          <th class="px-4 py-3">Total Jam</th>
+          <th class="px-4 py-3 col-biaya">Total Biaya (Rp)</th>
+          <th class="px-4 py-3 text-center">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="tblLemburBody" class="divide-y divide-slate-100">
+        <tr>
+          <td colspan="10" class="p-4 text-center text-slate-400">Memuat data lembur...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+    <!-- MODAL ALASAN PENOLAKAN LEMBUR -->
+<div id="modalExportLembur" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50">
+      <h3 class="text-base font-bold text-slate-900">Export Laporan Lembur</h3>
+      <button type="button" onclick="closeModal('modalExportLembur')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <form onsubmit="exportLemburExcel(event)" class="px-6 py-4 space-y-3 text-xs">
+      <div>
+        <label class="font-semibold text-slate-600">Karyawan (kosongkan = semua)</label>
+        <input type="text" id="exlKaryawan" list="exlKaryawanList" placeholder="Ketik nama / ID karyawan" class="w-full border rounded-lg px-3 py-2 mt-1">
+        <datalist id="exlKaryawanList"></datalist>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="font-semibold text-slate-600">Tanggal Lembur Dari</label><input type="date" id="exlDari" class="w-full border rounded-lg px-3 py-2 mt-1"></div>
+        <div><label class="font-semibold text-slate-600">Sampai</label><input type="date" id="exlSampai" class="w-full border rounded-lg px-3 py-2 mt-1"></div>
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Status</label>
+        <select id="exlStatus" class="w-full border rounded-lg px-3 py-2 mt-1">
+          <option value="">Semua Status</option><option value="SETUJU">Disetujui</option><option value="PENDING">Pending</option><option value="TOLAK">Ditolak</option>
+        </select>
+      </div>
+      <p class="text-[11px] text-slate-500">Hasil: sheet Rekap per Karyawan dan sheet Detail per Tanggal (dengan subtotal tiap karyawan).</p>
+      <div class="flex justify-end space-x-2 pt-1">
+        <button type="button" onclick="closeModal('modalExportLembur')" class="px-4 py-2 border rounded-lg font-semibold text-slate-600">Batal</button>
+        <button type="submit" id="btnDoExportLembur" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold"><i class="fa-solid fa-file-excel mr-1"></i>Download Excel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div id="modalRejectLembur" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="text-base font-bold text-slate-900">Tolak Pengajuan Lembur</h3>
+      <button onclick="closeModal('modalRejectLembur')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form onsubmit="confirmRejectLembur(event)" class="space-y-3">
+      <input type="hidden" id="rejectLemburId">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Alasan Penolakan <span class="text-red-500">*</span></label>
+        <textarea id="rejectLemburReason" required rows="3" placeholder="Jelaskan alasan pengajuan ini ditolak..." class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-red-400 outline-none"></textarea>
+        <p class="text-[10px] text-slate-400 mt-1">Alasan ini akan tersimpan dan dapat dilihat oleh pemohon.</p>
+      </div>
+      <div class="flex justify-end space-x-2 pt-2 border-t">
+        <button type="button" onclick="closeModal('modalRejectLembur')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700">Tolak Pengajuan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TAB DATA MASTER KARYAWAN -->
+<section id="tab-master-karyawan" class="tab-content hidden space-y-4">
+  <div class="flex flex-wrap justify-between items-end gap-3">
+    <div>
+      <h3 class="text-lg font-bold text-slate-900">Data Master Karyawan</h3>
+      <p class="text-xs text-slate-500">Seluruh lokasi dan karyawan per lokasi. Export/import Excel dan mutasi antar lokasi dilakukan dari sini.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="openModalLokasiKerja()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-plus mr-1"></i>Tambah Lokasi</button>
+      <button onclick="exportMasterKaryawanExcel()" class="bg-white border border-slate-200 hover:bg-slate-50 text-emerald-700 text-xs font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-file-excel mr-1"></i>Export Excel</button>
+      <button onclick="document.getElementById('mgImportFile').click()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-file-arrow-up mr-1"></i>Import Excel</button>
+      <button onclick="downloadTemplateImport()" class="bg-white border border-slate-200 hover:bg-slate-50 text-sky-700 text-xs font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-file-lines mr-1"></i>Template Import</button>
+      <input type="file" id="mgImportFile" accept=".xlsx" class="hidden" onchange="handleImportMasterGaji(this)">
+      <button onclick="openModalRiwayatMutasi()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-clock-rotate-left mr-1"></i>Riwayat Mutasi</button>
+    </div>
+  </div>
+  <div class="flex flex-wrap gap-2 text-xs">
+    <input id="mkCari" oninput="renderMasterKaryawan()" placeholder="Cari nama / ID / jabatan..." class="border rounded-lg px-3 py-2 w-64">
+    <select id="mkLokasi" onchange="renderMasterKaryawan()" class="border rounded-lg px-3 py-2"></select>
+    <select id="mkAktif" onchange="renderMasterKaryawan()" class="border rounded-lg px-3 py-2"><option value="">Semua status</option><option value="Aktif">Aktif</option><option value="Nonaktif">Nonaktif</option><option value="Menunggu Data">Menunggu Data</option></select>
+    <button onclick="sinkronKaryawanBaruUI()" class="bg-brand-500 hover:bg-brand-600 text-white font-semibold px-4 py-2 rounded-lg transition"><i class="fa-solid fa-user-plus mr-1"></i>Tarik Karyawan Baru</button>
+    <span id="mkSummary" class="self-center text-slate-500"></span>
+  </div>
+  <div id="mkList" class="space-y-3"><div class="text-xs text-slate-400 px-1">Memuat...</div></div>
+</section>
+
+<section id="tab-input-bulanan" class="tab-content hidden space-y-6">
+  <div>
+    <h3 class="text-lg font-bold text-slate-900">Input Data Bulanan</h3>
+    <p class="text-xs text-slate-500">Isian kehadiran, tunjangan tambahan, dan potongan per karyawan untuk periode payroll (cutoff tgl 16 - 15).</p>
+  </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-3">
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Periode</label>
+        <input type="month" id="pinPeriode" class="block border rounded-lg px-3 py-2 text-xs mt-1">
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Lokasi Kerja</label>
+        <select id="pinLokasi" onchange="renderPayrollInputTable()" class="block border rounded-lg px-3 py-2 text-xs mt-1 min-w-[220px]">
+          <option value="">Semua Lokasi</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Cari Nama / ID</label>
+        <input type="text" id="pinCari" list="pinNamaList" oninput="renderPayrollInputTable()" placeholder="Ketik nama karyawan..." class="block border rounded-lg px-3 py-2 text-xs mt-1 min-w-[200px]" autocomplete="off">
+        <datalist id="pinNamaList"></datalist>
+      </div>
+      <button onclick="loadPayrollInputUI()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-magnifying-glass mr-1"></i>Muat Data Karyawan
+      </button>
+      <button id="btnSyncAdmsInput" onclick="syncAdmsInputAction()" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-fingerprint mr-1"></i>Sync dari ADMS
+      </button>
+      <button id="btnExportInput" onclick="exportInputBulananExcel()" title="Export mengikuti filter Lokasi & Nama di sebelah kiri" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-file-excel mr-1"></i>Export Excel
+      </button>
+      <span id="pinSummary" class="text-[11px] text-slate-500 pb-2"></span>
+    </div>
+    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] rounded-lg px-4 py-2">
+      <i class="fa-solid fa-circle-info mr-1"></i>
+      <b>Export Excel</b> hanya memuat karyawan yang sudah terisi Input Data Bulanan dan mengikuti filter: pilih <b>Lokasi Kerja</b> untuk satu lokasi, ketik <b>nama</b> untuk per karyawan,
+      atau kosongkan keduanya untuk semua lokasi (otomatis 1 sheet per lokasi + sheet Ringkasan).
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+      <table class="w-full text-xs text-left text-slate-600 min-w-[900px]">
+        <thead class="text-slate-700 uppercase bg-slate-100 border-b">
+          <tr>
+            <th class="px-4 py-3">Nama</th>
+            <th class="px-4 py-3">Kode Lokasi</th>
+            <th class="px-4 py-3">Hari Kerja Aktual</th>
+            <th class="px-4 py-3">Alpa/Off/Izin</th>
+            <th class="px-4 py-3">Cuti/Sakit Dgn Surat</th>
+            <th class="px-4 py-3">Event / Dinas / PH</th>
+            <th class="px-4 py-3 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tblPayrollInputBody">
+          <tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Pilih periode lalu klik "Muat Data Karyawan".</td></tr>
+        </tbody>
+      </table>
+    </div>
+  
+</section>
+
+<section id="tab-absensi" class="tab-content hidden space-y-6">
+  <div>
+    <h3 class="text-lg font-bold text-slate-900">Absensi (ADMS)</h3>
+    <p class="text-xs text-slate-500">Rekap kehadiran dari mesin fingerprint ADMS, sinkron ke Input Data Bulanan.</p>
+  </div>
+
+    <div class="bg-sky-50 border border-sky-200 text-sky-700 text-[11px] rounded-lg px-4 py-2">
+      <i class="fa-solid fa-circle-info mr-1"></i>
+      Data ditarik dari mesin fingerprint (ADMS). Status "Terlambat" cuma informasi (tidak memotong gaji) -
+      HO dihitung otomatis dari jam masuk standar, Store belum dihitung telat (belum ada jadwal shift per orang).
+      Pencocokan karyawan berdasarkan ID Karyawan = Badge Number di mesin.
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-3">
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Periode</label>
+        <input type="month" id="absPeriode" class="block border rounded-lg px-3 py-2 text-xs mt-1">
+      </div>
+      <div>
+        <label class="text-[10px] font-bold text-slate-500 uppercase">Lokasi Kerja <span class="normal-case font-normal">(filter tampilan)</span></label>
+        <select id="absLokasi" onchange="renderAbsensiTable()" class="block border rounded-lg px-3 py-2 text-xs mt-1 min-w-[220px]">
+          <option value="">Semua Lokasi</option>
+        </select>
+      </div>
+      <button onclick="syncAbsensiAction()" title="Mengambil data absensi dari mesin ADMS untuk SELURUH lokasi di periode ini" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-rotate mr-1"></i>Sync dari ADMS
+      </button>
+      <button onclick="loadAbsensiRekap()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-magnifying-glass mr-1"></i>Muat Rekap
+      </button>
+      <button onclick="tarikAbsensiAction()" title="Mengisi Hari Kerja Aktual & Datang Terlambat di Input Data Bulanan dari rekap ini" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+        <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i>Tarik ke Input Data Bulanan
+      </button>
+      <span id="absSummary" class="text-[11px] text-slate-500 pb-2"></span>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+      <table class="w-full text-xs text-left text-slate-600 min-w-[800px]">
+        <thead class="text-slate-700 uppercase bg-slate-100 border-b">
+          <tr>
+            <th class="px-4 py-3">Nama</th>
+            <th class="px-4 py-3">Kode Lokasi</th>
+            <th class="px-4 py-3">Hari Hadir</th>
+            <th class="px-4 py-3">Hari Terlambat</th>
+            <th class="px-4 py-3 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="tblAbsensiBody">
+          <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Pilih periode, klik "Sync dari ADMS" (sekali per periode) lalu "Muat Rekap".</td></tr>
+        </tbody>
+      </table>
+    </div>
+  
+</section>
+
+      </main>
+    </div>
+  </div>
+
+
+  <!-- MODAL FORM LEMBUR -->
+  <div id="modalLembur" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <h3 class="text-base font-bold text-slate-900">Form Pengajuan Lembur</h3>
+      <form onsubmit="saveLembur(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Outlet / Penempatan</label><select id="ovtOutlet" required class="w-full border rounded-lg p-2 text-xs bg-slate-50"></select></div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Periode Lembur</label><input type="text" id="ovtPeriode" placeholder="September 2026" required class="w-full border rounded-lg p-2 text-xs"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">ID Karyawan</label><input type="text" id="ovtIdKaryawan" placeholder="EMP-XXXX" required class="w-full border rounded-lg p-2 text-xs"></div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Nama Karyawan</label><input type="text" id="ovtNamaKaryawan" required class="w-full border rounded-lg p-2 text-xs"></div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Jabatan / Posisi</label><input type="text" id="ovtJabatan" required class="w-full border rounded-lg p-2 text-xs"></div>
+        </div>
+
+        <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Manager Approver <span class="text-red-500">*</span></label>
+        <select id="ovtManager" required class="manager-approver-select w-full border rounded-lg p-2 text-xs bg-slate-50 focus:ring-2 focus:ring-brand-500 outline-none font-semibold">
+        <option value="">-- Pilih Manager Approver --</option>
+        </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">Hari</label>
+            <select id="ovtHari" required class="w-full border rounded-lg p-2 text-xs">
+              <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option><option value="Minggu">Minggu</option>
+            </select>
+          </div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Tanggal Lembur</label><input type="date" id="ovtTanggal" required class="w-full border rounded-lg p-2 text-xs"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Jam Masuk (Jadwal)</label><input type="time" id="ovtJamMasuk" required class="w-full border rounded-lg p-2 text-xs"></div>
+          <div><label class="block text-xs font-medium text-slate-600 mb-1">Jam Keluar (Jadwal)</label><input type="time" id="ovtJamKeluar" required class="w-full border rounded-lg p-2 text-xs"></div>
+        </div>
+
+        <div><label class="block text-xs font-medium text-slate-600 mb-1">Keterangan / Pekerjaan</label><textarea id="ovtKeterangan" rows="2" required class="w-full border rounded-lg p-2 text-xs"></textarea></div>
+
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="closeModal('modalLembur')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+          <button type="submit" class="px-4 py-2 bg-brand-500 text-white rounded-lg text-xs font-semibold">Kirim Pengajuan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<!-- MODAL MASTER GAJI KARYAWAN -->
+<div id="modalMasterGaji" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50 shrink-0">
+      <h3 id="mgTitle" class="text-base font-bold text-slate-900">Tambah Karyawan</h3>
+      <button type="button" onclick="closeModal('modalMasterGaji')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <form id="formMasterGaji" onsubmit="submitMasterGaji(event)" class="px-6 py-5 overflow-y-auto space-y-4 text-xs flex-1">
+      <input type="hidden" id="mgIsEdit" value="0">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="font-semibold text-slate-600">ID Karyawan</label>
+          <input type="text" id="mgIdKaryawan" list="mgKaryawanList" required class="w-full border rounded-lg px-3 py-2 mt-1">
+          <datalist id="mgKaryawanList"></datalist>
+        </div>
+        <div>
+          <label class="font-semibold text-slate-600">Nama</label>
+          <input type="text" id="mgNama" required class="w-full border rounded-lg px-3 py-2 mt-1">
+        </div>
+        <div>
+          <label class="font-semibold text-slate-600">Kode Lokasi</label>
+          <select id="mgKodeLokasi" required class="w-full border rounded-lg px-3 py-2 mt-1"></select>
+        </div>
+        <div>
+          <label class="font-semibold text-slate-600">Jabatan</label>
+          <select id="mgJabatan" required class="w-full border rounded-lg px-3 py-2 mt-1"></select>
+        </div>
+        <div>
+          <label class="font-semibold text-slate-600">Status Karyawan</label>
+          <select id="mgStatusKaryawan" class="w-full border rounded-lg px-3 py-2 mt-1">
+            <option value="Tetap">Tetap</option>
+            <option value="Kontrak">Kontrak</option>
+            <option value="Probation">Probation</option>
+          </select>
+        </div>
+        <div>
+          <label class="font-semibold text-slate-600">Status Aktif</label>
+          <select id="mgStatusAktif" class="w-full border rounded-lg px-3 py-2 mt-1">
+            <option value="Aktif">Aktif</option>
+            <option value="Nonaktif">Nonaktif</option>
+            <option value="Menunggu Data">Menunggu Data</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button type="button" onclick="closeModal('modalMasterGaji')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+        <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL MUTASI LOKASI -->
+<div id="modalMutasi" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50 shrink-0">
+      <h3 class="text-base font-bold text-slate-900">Mutasi Antar Lokasi</h3>
+      <button type="button" onclick="closeModal('modalMutasi')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <form onsubmit="submitMutasi(event)" class="px-6 py-5 overflow-y-auto space-y-3 text-xs flex-1">
+      <input type="hidden" id="mutId">
+      <div class="bg-slate-50 border rounded-lg px-3 py-2 text-slate-700" id="mutInfo"></div>
+      <div>
+        <label class="font-semibold text-slate-600">Lokasi Tujuan</label>
+        <select id="mutKodeLokasi" required class="w-full border rounded-lg px-3 py-2 mt-1"></select>
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Jabatan Baru <span class="font-normal text-slate-400">(ubah hanya jika berganti jabatan)</span></label>
+        <select id="mutJabatan" class="w-full border rounded-lg px-3 py-2 mt-1"></select>
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Tanggal Efektif</label>
+        <input type="date" id="mutTanggal" required class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Alasan / Keterangan</label>
+        <textarea id="mutAlasan" rows="2" class="w-full border rounded-lg px-3 py-2 mt-1"></textarea>
+      </div>
+      <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Mutasi langsung berlaku begitu disimpan (tanpa approval) dan tercatat di Riwayat Mutasi.</p>
+      <div class="flex justify-end space-x-2 pt-1">
+        <button type="button" onclick="closeModal('modalMutasi')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+        <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Mutasikan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL RIWAYAT MUTASI -->
+<div id="modalRiwayatMutasi" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-4xl w-full shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50 shrink-0">
+      <h3 class="text-base font-bold text-slate-900">Riwayat Mutasi Lokasi</h3>
+      <button type="button" onclick="closeModal('modalRiwayatMutasi')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <div class="overflow-auto flex-1">
+      <table class="w-full text-xs text-left text-slate-600 min-w-[760px]">
+        <thead class="text-slate-700 uppercase bg-slate-100 border-b sticky top-0">
+          <tr><th class="px-4 py-3">Tgl Efektif</th><th class="px-4 py-3">Karyawan</th><th class="px-4 py-3">Lokasi</th><th class="px-4 py-3">Jabatan</th><th class="px-4 py-3">Alasan</th><th class="px-4 py-3">Oleh</th></tr>
+        </thead>
+        <tbody id="tblMutasiBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INPUT DATA PAYROLL BULANAN -->
+<div id="modalLokasiKerja" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-xl">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50">
+      <h3 id="lkTitle" class="text-base font-bold text-slate-900">Tambah Lokasi Kerja</h3>
+      <button type="button" onclick="closeModal('modalLokasiKerja')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <form id="formLokasiKerja" onsubmit="submitLokasiKerja(event)" class="px-6 py-5 space-y-3 text-xs">
+      <input type="hidden" id="lkIsEdit" value="0">
+      <div>
+        <label class="font-semibold text-slate-600">Kode Lokasi</label>
+        <input type="hidden" id="lkKodeLama" value="">
+        <input type="text" id="lkKodeLokasi" required placeholder="Contoh: MMJ-GGP" class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Nama Lokasi</label>
+        <input type="text" id="lkNamaLokasi" required class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Jadwal Kerja</label>
+        <input type="text" id="lkJadwalKerja" placeholder="Contoh: Senin-Sabtu (Shifting)" class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Jam Kerja</label>
+        <input type="text" id="lkJamKerja" placeholder="Contoh: 09:00-18:00" class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Hari Off</label>
+        <input type="text" id="lkHariOff" placeholder="Contoh: Minggu" class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Tipe Lokasi</label>
+        <select id="lkTipeLokasi" class="w-full border rounded-lg px-3 py-2 mt-1 bg-white">
+          <option value="Store">Store / Outlet</option>
+          <option value="Head Office">Head Office / Gudang</option>
+        </select>
+      </div>
+      <div>
+        <label class="font-semibold text-slate-600">Pembagi Hari Kerja</label>
+        <input type="number" id="lkPembagiHariKerja" required min="1" value="25" class="w-full border rounded-lg px-3 py-2 mt-1">
+      </div>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button type="button" onclick="closeModal('modalLokasiKerja')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+        <button type="submit" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modalPayrollInput" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-5xl w-full shadow-xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50 shrink-0">
+      <div>
+        <h3 class="text-base font-bold text-slate-900">Input Data Bulanan (Per Hari)</h3>
+        <p id="pinNamaLabel" class="text-xs text-slate-500"></p>
+      </div>
+      <button type="button" onclick="closeModal('modalPayrollInput')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark text-lg"></i></button>
+    </div>
+    <form id="formPayrollInput" onsubmit="submitPayrollInput(event)" class="px-6 py-4 overflow-y-auto space-y-3 text-xs flex-1">
+      <input type="hidden" id="pinIdKaryawan">
+      <input type="hidden" id="pinNama">
+
+      <div id="pinAdmsInfo" class="text-[11px] rounded-lg border px-3 py-2 bg-slate-50 text-slate-500"></div>
+      <div id="pinLegacyInfo" class="hidden text-[11px] rounded-lg border px-3 py-2 bg-amber-50 border-amber-200 text-amber-800"></div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" onclick="pinIsiDariAdms()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold"><i class="fa-solid fa-fingerprint mr-1"></i>Isi Hadir dari ADMS</button>
+        <button type="button" onclick="pinKosongkan()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-semibold"><i class="fa-solid fa-eraser mr-1"></i>Kosongkan Semua</button>
+        <span class="text-[11px] text-slate-500">Status kehadiran dipilih satu per hari; kolom catatan kehadiran boleh dicentang bersamaan.</span>
+      </div>
+
+      <div>
+        <div class="font-bold text-brand-500 uppercase text-[11px] mb-1">Total Periode (otomatis dari checklist)</div>
+        <div id="pinTotals" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <div class="border rounded-lg overflow-auto max-h-[46vh]">
+        <table class="w-full text-[11px] text-slate-600">
+          <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10">
+            <tr>
+              <th rowspan="2" class="px-3 py-2 text-left border-b">Tanggal</th>
+              <th rowspan="2" class="px-3 py-2 text-left border-b">ADMS</th>
+              <th colspan="7" class="px-2 py-1 text-center border-b border-l bg-sky-50 text-sky-700">STATUS KEHADIRAN</th>
+              <th colspan="5" class="px-2 py-1 text-center border-b border-l bg-emerald-50 text-emerald-700">CATATAN KEHADIRAN</th>
+            </tr>
+            <tr id="pinDailyHead" class="border-b"></tr>
+          </thead>
+          <tbody id="pinDailyBody"><tr><td colspan="14" class="px-4 py-6 text-center text-slate-400">Memuat...</td></tr></tbody>
+        </table>
+      </div>
+
+      <div>
+        <label class="font-semibold text-slate-600">Catatan</label>
+        <textarea id="pinCatatan" rows="2" class="w-full border rounded-lg px-3 py-2 mt-1"></textarea>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-1">
+        <button type="button" onclick="closeModal('modalPayrollInput')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600">Batal</button>
+        <button type="submit" id="btnSavePin" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-semibold">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- MODAL DETAIL ABSENSI HARIAN -->
+<div id="modalAbsensiDetail" class="fixed inset-0 bg-slate-900/60 hidden backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-md w-full shadow-xl max-h-[85vh] flex flex-col overflow-hidden">
+    <div class="flex justify-between items-center px-6 py-4 border-b bg-slate-50 shrink-0">
+      <h3 id="absDetailTitle" class="text-sm font-bold text-slate-900">Detail Absensi</h3>
+      <button type="button" onclick="closeModal('modalAbsensiDetail')" class="text-slate-400 hover:text-slate-700 transition">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+    <div class="overflow-y-auto flex-1">
+      <table class="w-full text-xs text-left text-slate-600">
+        <thead class="text-slate-700 uppercase bg-slate-100 border-b sticky top-0">
+          <tr>
+            <th class="px-4 py-2">Tanggal</th>
+            <th class="px-4 py-2">Jam Masuk</th>
+            <th class="px-4 py-2">Jam Pulang</th>
+            <th class="px-4 py-2">Status</th>
+          </tr>
+        </thead>
+        <tbody id="absDetailBody"></tbody>
+      </table>
+    </div>
+    <div class="px-6 py-3 border-t bg-slate-50 flex justify-end shrink-0">
+      <button type="button" onclick="closeModal('modalAbsensiDetail')" class="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Tutup</button>
+    </div>
+  </div>
+</div>
+
+  <script>
+    let currentUser = null;
+    
+    let masterLemburList = [];
+
+    // -------------------------------------------------------------
+    // INITIALIZATION & PERSISTENSI LOGIN (PERBAIKAN ISSUE 5)
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      // Sesi disimpan per-tab (sessionStorage) + token server. Link yang dibuka/ditempel di browser atau
+      // tab lain tidak membawa sesi -> selalu masuk portal login lebih dulu.
+      try { localStorage.removeItem('hr_system_user'); localStorage.removeItem('hr_system_build'); } catch (e) { /* abaikan */ }
+      let savedUser = null, savedToken = null;
+      try { savedUser = sessionStorage.getItem('hr_system_user'); savedToken = sessionStorage.getItem('hr_system_token'); } catch (e) { /* abaikan */ }
+      if (savedUser && savedToken) {
+        let u = null;
+        try { u = JSON.parse(savedUser); } catch (err) { u = null; }
+        if (!u || !u.username) { clearSavedSession_(); return; }
+        google.script.run
+          .withFailureHandler(() => { clearSavedSession_(); })
+          .withSuccessHandler(ok => {
+            if (!ok) { clearSavedSession_(); return; }
+            currentUser = u;
+            initAppSession();
+          })
+          .validateSession(savedToken, u.username);
+      }
+    });
+
+    function clearSavedSession_() {
+      try { sessionStorage.removeItem('hr_system_user'); sessionStorage.removeItem('hr_system_token'); } catch (e) { /* abaikan */ }
+    }
+
+    // FUNGSI SIMPAN LEMBUR
+function saveLembur(e) {
+  e.preventDefault();
+  
+  const form = e.target;
+  const formData = {
+    outlet: document.getElementById('ovtOutlet').value,
+    periode: document.getElementById('ovtPeriode').value,
+    idKaryawan: document.getElementById('ovtIdKaryawan').value,
+    namaKaryawan: document.getElementById('ovtNamaKaryawan').value,
+    jabatan: document.getElementById('ovtJabatan').value,
+    managerApproval: document.getElementById('ovtManager').value, // Disesuaikan
+    hari: document.getElementById('ovtHari').value,
+    tglLembur: document.getElementById('ovtTanggal').value,       // Disesuaikan
+    jamMasuk: document.getElementById('ovtJamMasuk').value,
+    jamKeluar: document.getElementById('ovtJamKeluar').value,
+    keterangan: document.getElementById('ovtKeterangan').value,
+    createdBy: currentUser ? currentUser.username : ''
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      alert(res.message || "Pengajuan lembur berhasil dibuat.");
+      form.reset();
+      closeModal('modalLembur');
+      loadLembur();
+    })
+    .withFailureHandler(err => {
+      alert("Gagal menyimpan data: " + err.message);
+    })
+    .createLembur(formData); // Memanggil createLembur sesuai gambar backend
+}
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUsername').value;
+      const p = document.getElementById('loginPassword').value;
+      const btn = document.getElementById('btnLogin');
+      const alertBox = document.getElementById('loginAlert');
+
+      btn.innerText = "Memproses...";
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.innerText = "Masuk ke Portal";
+          btn.disabled = false;
+          if (res.success) {
+            currentUser = res.user;
+            try { sessionStorage.setItem('hr_system_user', JSON.stringify(currentUser)); sessionStorage.setItem('hr_system_token', res.token || ''); } catch (e) { /* abaikan */ }
+            initAppSession();
+          } else {
+            alertBox.className = "mt-4 p-3 rounded-lg text-xs font-medium text-center bg-red-100 text-red-700";
+            alertBox.innerText = res.message;
+            alertBox.classList.remove('hidden');
+          }
+        })
+        .loginUser(u, p);
+    }
+
+    function initAppSession() {
+      if (!currentUser) return;
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+
+      document.getElementById('userDisplayName').innerText = currentUser.username;
+      document.getElementById('userDisplayRole').innerText = currentUser.role;
+      document.getElementById('sbUsername').innerText = currentUser.username;
+      document.getElementById('sbRole').innerText = currentUser.role;
+
+      applyRBAC();
+      // Muat hak akses & daftar lokasi terbaru dulu, baru muat data modul (supaya filter lokasi langsung berlaku)
+      refreshMyPermissions(() => { loadMasterData(); loadAllModules(); ensureAllowedTab(); });
+    }
+
+    // Urutan menu = urutan sidebar. Nama tab sama dengan key modul hak akses.
+    const TAB_ORDER_ = ['master-karyawan', 'lembur', 'input-bulanan', 'absensi', 'users'];
+
+    // Pastikan tab yang sedang terbuka boleh diakses user; kalau belum ada / tidak boleh,
+    // buka tab pertama yang diizinkan.
+    function ensureAllowedTab() {
+      const visible = Array.from(document.querySelectorAll('.tab-content')).find(el => !el.classList.contains('hidden'));
+      const curKey = visible ? visible.id.replace('tab-', '') : null;
+      if (curKey && rbacHasAccess_(curKey, 'view')) return;
+      const first = TAB_ORDER_.find(k => rbacHasAccess_(k, 'view'));
+      if (first) switchTab(first);
+    }
+
+    // Ambil ulang hak akses terbaru dari server setiap sesi dibuka, supaya
+    // perubahan yang dibuat Admin di panel Hak Akses langsung berlaku tanpa
+    // menunggu user logout/login manual.
+    // ---- Akses lokasi: currentUser.lokasiAkses = null (semua lokasi) atau array kode lokasi yang boleh ----
+    let __lokasiMasterList = [];
+
+    function lokasiSetAkses_() {
+      const a = currentUser && currentUser.lokasiAkses;
+      if (!a) return null;
+      const s = {}; a.forEach(k => { s[String(k).trim().toUpperCase()] = true; });
+      return s;
+    }
+    function lokasiBolehKode_(kode) {
+      const s = lokasiSetAkses_();
+      return !s || !!s[String(kode || '').trim().toUpperCase()];
+    }
+    // Cocokkan nama/kode lokasi (mis. kolom Penempatan) dengan Master Lokasi Kerja
+    function lokasiBolehNama_(nama) {
+      if (!lokasiSetAkses_()) return true;
+      const n = String(nama || '').trim().toLowerCase();
+      return __lokasiMasterList.some(l =>
+        (String(l.namaLokasi).trim().toLowerCase() === n || String(l.kodeLokasi).trim().toLowerCase() === n) && lokasiBolehKode_(l.kodeLokasi));
+    }
+    function filterLokasiList_(list) { return (list || []).filter(l => lokasiBolehKode_(l.kodeLokasi)); }
+    function filterByKodeLokasi_(list) { return (list || []).filter(x => lokasiBolehKode_(x.kodeLokasi)); }
+
+    function refreshMyPermissions(cb) {
+      const done = () => { if (cb) cb(); };
+      if (!currentUser || !currentUser.username) { done(); return; }
+      google.script.run
+        .withSuccessHandler(res => {
+          currentUser.permissions = res.permissions;
+          currentUser.lokasiAkses = res.lokasiAkses;
+          try { sessionStorage.setItem('hr_system_user', JSON.stringify(currentUser)); } catch (e) { /* abaikan */ }
+          applyRBAC();
+          google.script.run
+            .withSuccessHandler(list => { __lokasiMasterList = list || []; done(); })
+            .withFailureHandler(() => done())
+            .getLokasiKerjaList();
+        })
+        .withFailureHandler(() => { done(); /* pakai hak akses versi cache */ })
+        .getMyAccess(currentUser.username);
+    }
+
+    
+    function logout() {
+      try { google.script.run.logoutSession(sessionStorage.getItem('hr_system_token')); } catch (e) { /* abaikan */ }
+      currentUser = null;
+      clearSavedSession_();
+      document.getElementById('appView').classList.add('hidden');
+      document.getElementById('loginView').classList.remove('hidden');
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebarNav').classList.toggle('-translate-x-full');
+    }
+
+    // Peta elemen sidebar/fitur -> modul & fitur kanonik (harus selaras dengan
+    // MODULE_DEFINITIONS_ di Code.gs). Dipakai untuk menentukan show/hide
+    // berdasarkan hak akses dinamis (per Role, bisa dioverride per User),
+    // bukan lagi hardcode nama role seperti sebelumnya.
+    const RBAC_NAV_MAP_ = {
+      'nav-master-karyawan': { module: 'master-karyawan', feature: 'view' },
+      'nav-lembur': { module: 'lembur', feature: 'view' },
+      'nav-input-bulanan': { module: 'input-bulanan', feature: 'view' },
+      'nav-absensi': { module: 'absensi', feature: 'view' },
+      'nav-users': { module: 'users', feature: 'view' }
+    };
+
+    function rbacHasAccess_(moduleKey, featureKey) {
+      const perms = (currentUser && currentUser.permissions) || null;
+      if (!perms) return true; // belum ada data permission (mis. sesi lama sebelum fitur ini ada) -> jangan kunci user
+      const val = perms[moduleKey + '.' + (featureKey || 'view')];
+      return val !== false; // default true kalau key belum dikenal, supaya tidak ada modul yang tiba-tiba hilang
+    }
+
+    function rbacToggleElements_(selector, allowed) {
+      document.querySelectorAll(selector).forEach(el => {
+        if (allowed) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+    }
+
+    function applyRBAC() {
+      const role = currentUser.role;
+
+      // 1. Menu sidebar per modul (termasuk Manajemen User, Kandidat, Karyawan, dst)
+      Object.keys(RBAC_NAV_MAP_).forEach(navId => {
+        const map = RBAC_NAV_MAP_[navId];
+        const el = document.getElementById(navId);
+        if (!el) return;
+        if (rbacHasAccess_(map.module, map.feature)) el.classList.remove('hidden');
+        else el.classList.add('hidden');
+      });
+
+      // 2. Tombol aksi khusus per fitur
+      rbacToggleElements_("button[onclick=\"openModal('modalLembur')\"]", rbacHasAccess_('lembur', 'form'));
+      rbacToggleElements_("button[onclick='openExportLembur()']", rbacHasAccess_('lembur', 'export'));
+      rbacToggleElements_("button[onclick='openModalLokasiKerja()']", rbacHasAccess_('master-karyawan', 'tambah_lokasi'));
+      rbacToggleElements_("button[onclick='syncAdmsInputAction()']", rbacHasAccess_('input-bulanan', 'sync'));
+      rbacToggleElements_("button[onclick='exportInputBulananExcel()']", rbacHasAccess_('input-bulanan', 'export'));
+      rbacToggleElements_("button[onclick='syncAbsensiAction()']", rbacHasAccess_('absensi', 'sync'));
+      rbacToggleElements_("button[onclick='tarikAbsensiAction()']", rbacHasAccess_('absensi', 'tarik'));
+
+      // 3. Sembunyikan total 1 grup sidebar (judul section) kalau semua tombol
+      //    di dalamnya sedang disembunyikan (mis. grup "Pengaturan KPI" berisi
+      //    2 menu, keduanya tertutup -> judul "Pengaturan KPI" ikut tertutup).
+      document.querySelectorAll('.flex-1.overflow-y-auto > div').forEach(groupDiv => {
+        const btns = groupDiv.querySelectorAll('button[id^="nav-"], button[onclick^="openModal"]');
+        if (!btns.length) return;
+        const anyVisible = Array.from(btns).some(b => !b.classList.contains('hidden'));
+        if (anyVisible) groupDiv.classList.remove('hidden');
+        else groupDiv.classList.add('hidden');
+      });
+
+      // 4. Panel "Hak Akses per Modul & Fitur" di tab Manajemen User hanya untuk Admin
+      const permPanel = document.getElementById('permAdminPanel');
+      if (permPanel) {
+        if (role === 'Admin') permPanel.classList.remove('hidden');
+        else permPanel.classList.add('hidden');
+      }
+    }
+
+    
+    
+    
+    
+    
+    
+    function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+  document.querySelectorAll('#sidebarNav button').forEach(b => b.classList.remove('sidebar-item-active'));
+  const activeBtn = document.getElementById(`nav-${tabName}`);
+  if (activeBtn) activeBtn.classList.add('sidebar-item-active');
+
+  if (tabName === 'lembur') loadLembur();
+  if (tabName === 'users') {
+    loadUsersList();
+    if (currentUser && currentUser.role === 'Admin') loadPermissionsUI();
+  }
+  if (tabName === 'master-karyawan') loadMasterKaryawan();
+  if (tabName === 'input-bulanan') loadInputBulananTab();
+  if (tabName === 'absensi') loadAbsensiTab();
+}
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function loadMasterData() {
+      google.script.run.withSuccessHandler(data => {
+        populateSelect('ovtOutlet', (data.locations || []).filter(n => lokasiBolehNama_(n)));
+      }).getMasterData();
+      // Dropdown Manager Approver (termasuk #ovtManager) diisi oleh loadManagerOptions()
+      // via getManagerList() - satu sumber data agar tidak saling menimpa.
+      loadManagerOptions();
+    }
+
+    function populateSelect(id, items) {
+      const el = document.getElementById(id); if (!el) return;
+      el.innerHTML = (items || []).map(i => `<option value="${i}">${i}</option>`).join('');
+    }
+
+    function loadAllModules() {
+      loadLembur();
+    }
+
+
+    
+    
+// 1. FUNGSI MEMUAT DATA LEMBUR DARI BACKEND
+function loadLembur() {
+  const tbody = document.getElementById('tblLemburBody');
+  tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat data lembur...</td></tr>`;
+
+  google.script.run
+    .withSuccessHandler(data => {
+      masterLemburList = data || [];
+      renderLemburTable(masterLemburList);
+    })
+    .withFailureHandler(err => {
+      console.error('Gagal memuat data lembur:', err);
+      tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-500">Gagal memuat data. Sila coba beberapa saat lagi.</td></tr>`;
+    })
+    .getLemburData(currentUser ? currentUser.role : '', currentUser ? currentUser.username : '');
+}
+
+// Helper Normalisasi Objek Row
+function parseLemburItem(item) {
+  if (Array.isArray(item)) {
+    return {
+      id: item[0] || '-',
+      tglPengajuan: item[1] || '-',
+      idKaryawan: item[2] || '-',
+      namaKaryawan: item[3] || '-',
+      jabatan: item[4] || '-',
+      outlet: item[5] || '-',
+      periode: item[6] || '-',
+      manager: item[7] || '-',
+      hariTanggal: item[8] || '-',
+      jadwalJam: item[9] || '-',
+      keterangan: item[10] || '-',
+      status: item[11] || 'Pending',
+      catatan: item[15] || '',
+      realisasiJam: item[12] || '-',
+      totalJam: item[13] || '0',
+      totalBiaya: item[14] || 0
+    };
+  }
+  return item;
+}
+
+// 2. FUNGSI RENDER TABEL DENGAN MEMPERHATIKAN ROLE & ALIGNMENT
+function renderLemburTable(list) {
+  const tbody = document.getElementById('tblLemburBody');
+  const role = currentUser ? currentUser.role : 'MOD';
+  const username = currentUser ? currentUser.username : '';
+
+  if (!list || list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-400">Tidak ada data pengajuan lembur.</td></tr>`;
+    toggleBiayaColumnVisibility(role);
+    return;
+  }
+
+  tbody.innerHTML = list.map(raw => {
+    const item = parseLemburItem(raw);
+    const statusUpper = (item.status || 'PENDING').toUpperCase();
+
+    // Badges Status Approval
+    const pendHrd = statusUpper.includes('HRD');
+    const pendMgr = statusUpper.includes('PENDING') && !pendHrd;
+    let statusBadge = `<span class="px-2.5 py-1 inline-flex items-center gap-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800"><i class="fa-solid fa-hourglass-half text-[10px]"></i> Pending Manager</span>`;
+    if (pendHrd) {
+      statusBadge = `<span class="px-2.5 py-1 inline-flex items-center gap-1 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-800"><i class="fa-solid fa-user-clock text-[10px]"></i> Pending Approval HRD</span>`;
+    } else if (statusUpper.includes('SETUJU') || statusUpper.includes('APPROV')) {
+      statusBadge = `<span class="px-2.5 py-1 inline-flex items-center gap-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-circle-check text-[10px]"></i> Disetujui</span>`;
+    } else if (statusUpper.includes('TOLAK') || statusUpper.includes('REJECT')) {
+      statusBadge = `<span class="px-2.5 py-1 inline-flex items-center gap-1 rounded-full text-[11px] font-semibold bg-red-100 text-red-800"><i class="fa-solid fa-circle-xmark text-[10px]"></i> Ditolak</span>`;
+    }
+
+    if (item.catatan) {
+      const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const warna = statusUpper.includes('TOLAK') || statusUpper.includes('REJECT') ? 'text-red-500' : 'text-slate-500';
+      statusBadge += `<div class="text-[10px] ${warna} mt-1 max-w-[210px] leading-snug"><i class="fa-solid fa-user-pen mr-1"></i>${String(item.catatan).split(' | ').map(esc).join('<br>')}</div>`;
+    }
+
+    // Tombol AKSI Berdasarkan Role
+    let actionButtons = '';
+
+    if (role === 'Manager') {
+      if (pendMgr) {
+        actionButtons = `
+          <div class="flex items-center justify-center space-x-1">
+            <button onclick="updateStatusLembur('${item.id}', 'Disetujui')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition shadow-sm" title="Setujui Pengajuan">
+              <i class="fa-solid fa-check"></i> Setujui
+            </button>
+            <button onclick="updateStatusLembur('${item.id}', 'Ditolak')" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition shadow-sm" title="Tolak Pengajuan">
+              <i class="fa-solid fa-xmark"></i> Tolak
+            </button>
+          </div>
+        `;
+      } else {
+        actionButtons = `<span class="text-slate-400 text-[11px] italic font-medium"><i class="fa-solid fa-lock text-[10px] mr-1"></i>Selesai</span>`;
+      }
+    } else if (role === 'HR' || role === 'Admin') {
+      actionButtons = `
+        <div class="flex items-center justify-center space-x-1">
+          ${(pendHrd || (pendMgr && role === 'Admin')) ? `
+            <button onclick="updateStatusLembur('${item.id}', 'Disetujui')" class="p-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded text-xs transition" title="Setujui">
+              <i class="fa-solid fa-check"></i>
+            </button>
+            <button onclick="updateStatusLembur('${item.id}', 'Ditolak')" class="p-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs transition" title="Tolak">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          ` : ''}
+          <button onclick="deleteLembur('${item.id}')" class="p-1.5 bg-slate-100 text-red-600 hover:bg-red-50 rounded text-xs transition" title="Hapus Pengajuan">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      `;
+    } else {
+      // Role MOD atau Role Lainnya
+      actionButtons = `<span class="text-slate-400 text-[11px] italic">Read-Only</span>`;
+    }
+
+    // Nominal Biaya Formatted
+    const formattedBiaya = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.totalBiaya || 0);
+
+    return `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="px-4 py-3">
+          <div class="font-bold text-slate-800">${item.id}</div>
+          <div class="text-[11px] text-slate-500">${item.tglPengajuan}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-semibold text-slate-800">${item.namaKaryawan}</div>
+          <div class="text-[11px] text-slate-500">${item.idKaryawan} • ${item.jabatan}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-medium text-slate-800">${item.outlet}</div>
+          <div class="text-[11px] text-slate-500">${item.periode}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="font-medium text-slate-800">${item.hariTanggal}</div>
+          <div class="text-[11px] text-slate-500"><i class="fa-regular fa-clock mr-1"></i>${item.jadwalJam}</div>
+        </td>
+        <td class="px-4 py-3">
+          <div class="max-w-[180px] truncate text-slate-700" title="${item.keterangan}">${item.keterangan}</div>
+        </td>
+        <td class="px-4 py-3">${statusBadge}</td>
+        <td class="px-4 py-3 font-medium text-slate-700">${item.realisasiJam || '-'}${item.sumber === 'ADMS' ? '<div class="text-[10px] font-normal text-indigo-500"><i class="fa-solid fa-fingerprint mr-1"></i>Finger ADMS &minus; 9 jam kerja</div>' : ''}</td>
+        <td class="px-4 py-3 font-semibold text-slate-800">${item.totalJam ? item.totalJam + ' Jam' : '-'}</td>
+        <td class="px-4 py-3 font-semibold text-emerald-700 col-biaya">${formattedBiaya}</td>
+        <td class="px-4 py-3 text-center">${actionButtons}</td>
+      </tr>
+    `;
+  }).join('');
+
+  toggleBiayaColumnVisibility(role);
+}
+
+// Helper Sembunyikan / Tampilkan Kolom Biaya
+function toggleBiayaColumnVisibility(role) {
+  const isMod = (role === 'MOD');
+  document.querySelectorAll('.col-biaya').forEach(el => {
+    if (isMod) {
+      el.classList.add('hidden');
+    } else {
+      el.classList.remove('hidden');
+    }
+  });
+
+  // Tombol Export CSV juga disembunyikan untuk MOD
+  const btnExport = document.getElementById('btnExportLembur');
+  if (btnExport) {
+    if (isMod) btnExport.classList.add('hidden');
+    else btnExport.classList.remove('hidden');
+  }
+}
+
+// 3. FUNGSI FILTER SEARCH TABLE
+function lemburStatusKey_(status) {
+  const u = String(status || 'PENDING').toUpperCase();
+  if (u.includes('SETUJU') || u.includes('APPROV')) return 'SETUJU';
+  if (u.includes('TOLAK') || u.includes('REJECT')) return 'TOLAK';
+  return u.includes('HRD') ? 'PEND_HRD' : 'PEND_MGR';
+}
+function filterLemburTable() {
+  const query = document.getElementById('filterLemburKaryawan').value.toLowerCase();
+  const st = document.getElementById('filterLemburStatus').value;
+  const filtered = masterLemburList.filter(raw => {
+    const item = parseLemburItem(raw);
+    if (st && lemburStatusKey_(item.status) !== st) return false;
+    return item.namaKaryawan.toLowerCase().includes(query) ||
+           item.idKaryawan.toLowerCase().includes(query) ||
+           item.outlet.toLowerCase().includes(query) ||
+           item.id.toLowerCase().includes(query);
+  });
+  renderLemburTable(filtered);
+}
+
+// 4. HANDLER SETUJUI / TOLAK LEMBUR (APPROVAL)
+function updateStatusLembur(id, newStatus, catatan) {
+  if (newStatus === 'Ditolak') {
+    // Alasan penolakan wajib diisi lewat modal, bukan lewat confirm() biasa.
+    openRejectLemburModal(id);
+    return;
+  }
+  if (!confirm(`Apakah Anda yakin ingin mengubah status lembur ${id} menjadi "${newStatus}"?`)) return;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) {
+        alert(res.message || `Status lembur ${id} berhasil diperbarui.`);
+        loadLembur();
+      } else {
+        alert(`Gagal: ${res.message}`);
+      }
+    })
+    .withFailureHandler(err => {
+      alert(`Error: ${err.message}`);
+    })
+    .updateOvertimeStatus(id, newStatus, currentUser ? currentUser.username : 'System', catatan || '-');
+}
+
+// Buka modal input alasan penolakan
+function openRejectLemburModal(id) {
+  document.getElementById('rejectLemburId').value = id;
+  document.getElementById('rejectLemburReason').value = '';
+  openModal('modalRejectLembur');
+}
+
+// Submit modal alasan penolakan -> kirim status "Ditolak" + alasan ke backend
+function confirmRejectLembur(e) {
+  e.preventDefault();
+  const id = document.getElementById('rejectLemburId').value;
+  const reason = document.getElementById('rejectLemburReason').value.trim();
+  if (!reason) { alert('Alasan penolakan wajib diisi.'); return; }
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) {
+        alert(res.message || `Pengajuan lembur ${id} berhasil ditolak.`);
+        closeModal('modalRejectLembur');
+        loadLembur();
+      } else {
+        alert(`Gagal: ${res.message}`);
+      }
+    })
+    .withFailureHandler(err => {
+      alert(`Error: ${err.message}`);
+    })
+    .updateOvertimeStatus(id, 'Ditolak', currentUser ? currentUser.username : 'System', reason);
+}
+
+// 5. HANDLER REALISASI JAM LEMBUR
+// 6. HANDLER HAPUS LEMBUR
+function deleteLembur(id) {
+  if (!confirm(`Hapus pengajuan lembur ${id}?`)) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) {
+        alert("Data lembur berhasil dihapus.");
+        loadLembur();
+      } else {
+        alert(`Gagal: ${res.message}`);
+      }
+    })
+    .deleteLemburData(id);
+}
+
+// 7. EXPORT LAPORAN LEMBUR KE EXCEL (per karyawan / per tanggal)
+function openExportLembur() {
+  if (!masterLemburList || !masterLemburList.length) { alert('Tidak ada data lembur untuk diexport.'); return; }
+  const seen = {};
+  masterLemburList.forEach(raw => {
+    const it = parseLemburItem(raw);
+    seen[it.namaKaryawan + ' (' + it.idKaryawan + ')'] = true;
+  });
+  document.getElementById('exlKaryawanList').innerHTML = Object.keys(seen).sort().map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">').join('');
+  openModal('modalExportLembur');
+}
+
+async function exportLemburExcel(e) {
+  e.preventDefault();
+  if (typeof ExcelJS === 'undefined') { alert('Library Excel belum termuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
+  const q = document.getElementById('exlKaryawan').value.trim().toLowerCase();
+  const dari = document.getElementById('exlDari').value;
+  const sampai = document.getElementById('exlSampai').value;
+  const st = document.getElementById('exlStatus').value;
+  const btn = document.getElementById('btnDoExportLembur');
+  const awal = btn.innerHTML; btn.disabled = true; btn.textContent = 'Membuat file...';
+  try {
+    const tglOf = it => { const m = /\d{4}-\d{2}-\d{2}/.exec(String(it.hariTanggal || '')); return m ? m[0] : ''; };
+    const num = v => Number(String(v).replace(/[^\d.-]/g, '')) || 0;
+    const rows = masterLemburList.map(parseLemburItem).filter(it => {
+      const tgl = tglOf(it);
+      if (q && (it.namaKaryawan + ' (' + it.idKaryawan + ')').toLowerCase().indexOf(q) === -1 && String(it.idKaryawan).toLowerCase() !== q) return false;
+      if (dari && (!tgl || tgl < dari)) return false;
+      if (sampai && (!tgl || tgl > sampai)) return false;
+      if (st) {
+        const u = String(it.status || 'PENDING').toUpperCase();
+        if (st === 'SETUJU' && !(u.includes('SETUJU') || u.includes('APPROV'))) return false;
+        if (st === 'PENDING' && !u.includes('PENDING')) return false;
+        if (st === 'TOLAK' && !(u.includes('TOLAK') || u.includes('REJECT'))) return false;
+      }
+      return true;
+    }).map(it => Object.assign({}, it, { tgl: tglOf(it), jam: num(it.totalJam), biaya: num(it.totalBiaya) }));
+    if (!rows.length) { alert('Tidak ada data lembur yang cocok dengan filter.'); return; }
+
+    const byKary = {};
+    rows.forEach(r => { const k = r.idKaryawan + '|' + r.namaKaryawan; (byKary[k] = byKary[k] || []).push(r); });
+    const keys = Object.keys(byKary).sort((a, b) => byKary[a][0].namaKaryawan.localeCompare(byKary[b][0].namaKaryawan));
+    keys.forEach(k => byKary[k].sort((a, b) => (a.tgl || '').localeCompare(b.tgl || '') || String(a.id).localeCompare(String(b.id))));
+
+    const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+    const border = { top: thin, left: thin, bottom: thin, right: thin };
+    const fill = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+    const rpFmt = '#,##0;[Red]-#,##0;"-"';
+    const dicetak = new Date().toLocaleString('id-ID');
+    const rentang = (dari || sampai) ? ((dari || 'awal') + ' s.d. ' + (sampai || 'akhir')) : 'Semua tanggal';
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Shigeru HR - PT Mideli Makmur Jaya';
+
+    const judul = (ws, teks, lebar) => {
+      ws.mergeCells(1, 1, 1, lebar);
+      ws.getCell(1, 1).value = teks; ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
+      ws.getRow(1).height = 24;
+      ws.mergeCells(2, 1, 2, lebar);
+      ws.getCell(2, 1).value = 'Tanggal lembur: ' + rentang + (st ? '   |   Status: ' + document.getElementById('exlStatus').selectedOptions[0].text : '') + '   |   Dicetak: ' + dicetak;
+      ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: 'FF64748B' } };
+    };
+    const header = (ws, rowNo, heads) => {
+      heads.forEach((hd, i) => {
+        const cell = ws.getCell(rowNo, i + 1);
+        cell.value = hd[0]; ws.getColumn(i + 1).width = hd[1];
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } }; cell.fill = fill('FF1E3A5F');
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; cell.border = border;
+      });
+      ws.getRow(rowNo).height = 30;
+    };
+    const page = { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+    // ---- Sheet 1: Rekap per Karyawan
+    const wr = wb.addWorksheet('Rekap per Karyawan', { views: [{ showGridLines: false }], pageSetup: page });
+    const hr = [['No', 5], ['ID Karyawan', 14], ['Nama Karyawan', 28], ['Jabatan', 20], ['Outlet', 24], ['Jml Pengajuan', 12], ['Total Jam', 11], ['Total Biaya (Rp)', 18]];
+    judul(wr, 'REKAP LEMBUR PER KARYAWAN', hr.length); header(wr, 4, hr);
+    let tJam = 0, tBiaya = 0, tN = 0;
+    keys.forEach((k, idx) => {
+      const L = byKary[k]; const f = L[0];
+      const jam = L.reduce((s, r) => s + r.jam, 0), biaya = L.reduce((s, r) => s + r.biaya, 0);
+      tJam += jam; tBiaya += biaya; tN += L.length;
+      [idx + 1, f.idKaryawan, f.namaKaryawan, f.jabatan, f.outlet, L.length, jam, biaya].forEach((v, ci) => {
+        const cell = wr.getCell(5 + idx, ci + 1); cell.value = v; cell.border = border; cell.font = { size: 10 };
+        cell.alignment = { horizontal: ci === 7 ? 'right' : (ci >= 1 && ci <= 4 ? 'left' : 'center'), vertical: 'middle' };
+        if (ci === 7) cell.numFmt = rpFmt;
+        if (idx % 2 === 1) cell.fill = fill('FFF8FAFC');
+      });
+    });
+    const tr = 5 + keys.length;
+    for (let ci = 1; ci <= hr.length; ci++) { const cell = wr.getCell(tr, ci); cell.fill = fill('FFE2E8F0'); cell.font = { bold: true, size: 10 }; cell.border = { top: { style: 'medium', color: { argb: 'FF334155' } }, left: thin, bottom: { style: 'medium', color: { argb: 'FF334155' } }, right: thin }; }
+    wr.getCell(tr, 1).value = 'TOTAL'; wr.mergeCells(tr, 1, tr, 5); wr.getCell(tr, 1).alignment = { horizontal: 'right' };
+    wr.getCell(tr, 6).value = tN; wr.getCell(tr, 6).alignment = { horizontal: 'center' };
+    wr.getCell(tr, 7).value = tJam; wr.getCell(tr, 7).alignment = { horizontal: 'center' };
+    wr.getCell(tr, 8).value = tBiaya; wr.getCell(tr, 8).numFmt = rpFmt; wr.getCell(tr, 8).alignment = { horizontal: 'right' };
+    wr.views = [{ state: 'frozen', ySplit: 4, showGridLines: false }];
+
+    // ---- Sheet 2: Detail per Tanggal (dikelompokkan per karyawan, subtotal)
+    const wd = wb.addWorksheet('Detail Lembur', { views: [{ showGridLines: false }], pageSetup: page });
+    const hd = [['No', 5], ['Tanggal Lembur', 16], ['ID Lembur', 12], ['Jadwal Jam', 14], ['Keterangan', 32], ['Status', 12], ['Realisasi Jam', 16], ['Jam Dibayar', 11], ['Biaya (Rp)', 16]];
+    judul(wd, 'DETAIL LEMBUR PER TANGGAL', hd.length); header(wd, 4, hd);
+    const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    let r = 5, gJam = 0, gBiaya = 0;
+    keys.forEach(k => {
+      const L = byKary[k]; const f = L[0];
+      wd.mergeCells(r, 1, r, hd.length);
+      const g = wd.getCell(r, 1);
+      g.value = f.namaKaryawan + '  |  ID ' + f.idKaryawan + '  |  ' + f.jabatan + '  |  ' + f.outlet;
+      g.font = { bold: true, size: 10, color: { argb: 'FF0F172A' } }; g.fill = fill('FFDBEAFE'); g.alignment = { vertical: 'middle' };
+      wd.getRow(r).height = 20; r++;
+      let sj = 0, sb = 0;
+      L.forEach((x, i) => {
+        let tglTxt = x.tgl;
+        if (x.tgl) { const p = x.tgl.split('-'); tglTxt = hari[new Date(+p[0], +p[1] - 1, +p[2]).getDay()] + ', ' + p[2] + '-' + p[1] + '-' + p[0]; }
+        const u = String(x.status || '').toUpperCase();
+        const stTxt = (u.includes('SETUJU') || u.includes('APPROV')) ? 'Disetujui' : (u.includes('TOLAK') || u.includes('REJECT')) ? 'Ditolak' : (u.includes('HRD') ? 'Pending HRD' : 'Pending Manager');
+        sj += x.jam; sb += x.biaya;
+        [i + 1, tglTxt, x.id, x.jadwalJam, x.keterangan === '-' ? '' : x.keterangan, stTxt, x.realisasiJam === '-' ? '' : x.realisasiJam, x.jam, x.biaya].forEach((v, ci) => {
+          const cell = wd.getCell(r, ci + 1); cell.value = v; cell.border = border; cell.font = { size: 10 };
+          cell.alignment = { horizontal: ci === 8 ? 'right' : (ci === 1 || ci === 4 ? 'left' : 'center'), vertical: 'middle', wrapText: ci === 4 };
+          if (ci === 8) cell.numFmt = rpFmt;
+          if (ci === 5) cell.font = { size: 10, bold: true, color: { argb: stTxt === 'Disetujui' ? 'FF047857' : stTxt === 'Ditolak' ? 'FFB91C1C' : 'FFB45309' } };
+        });
+        r++;
+      });
+      wd.mergeCells(r, 1, r, 7);
+      wd.getCell(r, 1).value = 'Subtotal ' + f.namaKaryawan; wd.getCell(r, 1).alignment = { horizontal: 'right' };
+      wd.getCell(r, 8).value = sj; wd.getCell(r, 8).alignment = { horizontal: 'center' };
+      wd.getCell(r, 9).value = sb; wd.getCell(r, 9).numFmt = rpFmt; wd.getCell(r, 9).alignment = { horizontal: 'right' };
+      for (let ci = 1; ci <= hd.length; ci++) { const cell = wd.getCell(r, ci); cell.fill = fill('FFF1F5F9'); cell.font = { bold: true, size: 10 }; cell.border = border; }
+      gJam += sj; gBiaya += sb; r += 2;
+    });
+    wd.mergeCells(r, 1, r, 7);
+    wd.getCell(r, 1).value = 'TOTAL KESELURUHAN'; wd.getCell(r, 1).alignment = { horizontal: 'right' };
+    wd.getCell(r, 8).value = gJam; wd.getCell(r, 8).alignment = { horizontal: 'center' };
+    wd.getCell(r, 9).value = gBiaya; wd.getCell(r, 9).numFmt = rpFmt; wd.getCell(r, 9).alignment = { horizontal: 'right' };
+    for (let ci = 1; ci <= hd.length; ci++) { const cell = wd.getCell(r, ci); cell.fill = fill('FFE2E8F0'); cell.font = { bold: true, size: 10 }; cell.border = { top: { style: 'medium', color: { argb: 'FF334155' } }, left: thin, bottom: { style: 'medium', color: { argb: 'FF334155' } }, right: thin }; }
+    wd.views = [{ state: 'frozen', ySplit: 4, showGridLines: false }];
+
+    const safe = s => String(s).replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_|_$/g, '');
+    const suffix = keys.length === 1 ? safe(byKary[keys[0]][0].namaKaryawan) : 'Semua_Karyawan';
+    const tgl = (dari || sampai) ? '_' + (dari || 'awal') + '_sd_' + (sampai || 'akhir') : '';
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'Laporan_Lembur_' + suffix + tgl + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    closeModal('modalExportLembur');
+  } catch (err) {
+    console.error('Export lembur gagal:', err);
+    alert('Gagal membuat file Excel: ' + (err && err.message ? err.message : err));
+  } finally { btn.disabled = false; btn.innerHTML = awal; }
+}
+
+
+    
+    
+
+    
+
+    
+    
+    
+    
+
+    
+    
+    
+    
+    // -------------------------------------------------------------
+// HELPER SWITCH TAB & LOAD MASTER DATA MODUL BARU
+// -------------------------------------------------------------
+// (wrapper switchTab lama dihapus: semua pemuatan tab kini ada di switchTab utama)
+
+// (wrapper loadMasterData untuk form Cuti/Exit dihapus bersama modulnya)
+
+
+// Array global untuk menyimpan cache data user sementara
+let globalUsersList = [];
+
+/**
+ * Mengambil dan merender tabel pengguna
+ */
+function loadUsersList() {
+  google.script.run
+    .withSuccessHandler(list => {
+      globalUsersList = list || [];
+      const tbody = document.getElementById('tblUsersBody');
+      if (!globalUsersList.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Belum ada akun terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = globalUsersList.map(u => {
+        let roleBadge = 'bg-slate-100 text-slate-700';
+        if (u.role === 'Admin') roleBadge = 'bg-red-100 text-red-700';
+        if (u.role === 'HR') roleBadge = 'bg-brand-50 text-brand-700';
+        if (u.role === 'Manager') roleBadge = 'bg-purple-100 text-purple-700';
+        if (u.role === 'MOD') roleBadge = 'bg-amber-100 text-amber-700';
+
+        const isSelf = u.username === currentUser.username;
+
+        return `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="px-4 py-3 font-bold text-brand-500">${u.id}</td>
+            <td class="px-4 py-3">
+              <div class="font-bold text-slate-800">${u.username}</div>
+              <div class="text-[10px] text-slate-400">${u.email}</div>
+            </td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${roleBadge}">${u.role}</span>
+            </td>
+            <td class="px-4 py-3 text-slate-500">${u.createdAt}</td>
+            <td class="px-4 py-3 text-center space-x-1">
+              <button onclick="prepareEditUser('${u.id}')" class="px-2 py-1 bg-amber-50 text-amber-600 rounded text-[10px] font-bold hover:bg-amber-100 transition">
+                <i class="fa-solid fa-pen-to-square"></i> Edit
+              </button>
+              ${!isSelf ? `
+                <button onclick="handleDeleteUser('${u.id}', '${u.username}')" class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold hover:bg-red-100 transition">
+                  <i class="fa-solid fa-trash"></i> Hapus
+                </button>
+              ` : '<span class="text-[10px] text-slate-400 italic ml-1">Aktif</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    })
+    .withFailureHandler(err => alert('Gagal memuat daftar user: ' + (err && err.message ? err.message : err)))
+    .getUsersList(authToken_(), currentUser.username);
+}
+
+/**
+ * Menyiapkan form ke mode Edit
+ */
+function toggleUserPassword(forceHide) {
+  const inp = document.getElementById('usrPassword'), ico = document.querySelector('#btnTogglePwd i');
+  const show = forceHide ? false : inp.type === 'password';
+  inp.type = show ? 'text' : 'password';
+  ico.className = show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+}
+
+function authToken_() {
+  try { return sessionStorage.getItem('hr_system_token') || ''; } catch (e) { return ''; }
+}
+
+function prepareEditUser(userId) {
+  toggleUserPassword(true);
+  const user = globalUsersList.find(u => u.id === userId);
+  if (!user) return;
+
+  document.getElementById('usrId').value = user.id;
+  document.getElementById('usrUsername').value = user.username;
+  document.getElementById('usrEmail').value = user.email;
+  document.getElementById('usrPassword').value = user.password;
+  document.getElementById('usrRole').value = user.role;
+
+  // Ubah UI Form ke Mode Edit
+  document.getElementById('formUserTitle').innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i> Edit Data User (${user.id})`;
+  document.getElementById('btnSaveUser').innerHTML = `<i class="fa-solid fa-check mr-1"></i> Update User`;
+  document.getElementById('btnSaveUser').className = "flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition text-xs shadow";
+  document.getElementById('btnCancelEdit').classList.remove('hidden');
+}
+
+/**
+ * Mengembalikan form ke mode Tambah User Baru
+ */
+function resetUserForm() {
+  document.getElementById('formCreateUser').reset();
+  toggleUserPassword(true);
+  document.getElementById('usrId').value = "";
+
+  document.getElementById('formUserTitle').innerHTML = `<i class="fa-solid fa-user-plus text-brand-500"></i> Buat Akun User Baru`;
+  document.getElementById('btnSaveUser').innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan User`;
+  document.getElementById('btnSaveUser').className = "flex-1 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-lg transition text-xs shadow";
+  document.getElementById('btnCancelEdit').classList.add('hidden');
+}
+
+/**
+ * Handler Submit Form (Create / Update)
+ */
+function handleSaveUser(e) {
+  e.preventDefault();
+  const userId = document.getElementById('usrId').value;
+  const btn = document.getElementById('btnSaveUser');
+  
+  btn.innerText = "Memproses...";
+  btn.disabled = true;
+
+  const userData = {
+    id: userId,
+    username: document.getElementById('usrUsername').value,
+    email: document.getElementById('usrEmail').value,
+    password: document.getElementById('usrPassword').value,
+    role: document.getElementById('usrRole').value
+  };
+
+  // Tentukan Panggilan Backend (Update vs Save New)
+  const backendFunction = userId ? 'updateUser' : 'saveNewUser';
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      alert(res.message);
+      if (res.success) {
+        resetUserForm();
+        loadUsersList();
+      } else {
+        if (userId) {
+          document.getElementById('btnSaveUser').innerHTML = `<i class="fa-solid fa-check mr-1"></i> Update User`;
+        } else {
+          document.getElementById('btnSaveUser').innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan User`;
+        }
+      }
+    })
+    .withFailureHandler(err => { btn.disabled = false; alert('Gagal: ' + (err && err.message ? err.message : err)); })[backendFunction](userData, authToken_(), currentUser.username);
+}
+
+/**
+ * Handler Hapus User
+ */
+function handleDeleteUser(userId, username) {
+  if (confirm(`Apakah Anda yakin ingin menghapus akun user "${username}" (${userId})?`)) {
+    google.script.run
+      .withSuccessHandler(res => {
+        alert(res.message);
+        if (res.success) {
+          if (document.getElementById('usrId').value === userId) {
+            resetUserForm();
+          }
+          loadUsersList();
+        }
+      })
+      .withFailureHandler(err => alert('Gagal: ' + (err && err.message ? err.message : err)))
+      .deleteUser(userId, authToken_(), currentUser.username);
+  }
+}
+
+// =============================================================
+// PANEL HAK AKSES PER MODUL & FITUR (Role + Override per User)
+// =============================================================
+let globalPermissionsData = null; // { modules, featureLabels, roles, users, rows } dari getPermissionsMatrix()
+let permPendingChanges = {};       // key "scopeType|scopeValue|moduleKey|featureKey" -> perubahan yang belum disimpan
+let permCurrentScope = { type: 'ROLE', value: 'Admin' };
+
+
+// ---- Akses Lokasi per Role / per User ----
+let permLokasi = { mode: 'all', set: {}, dirty: false };
+
+function permLokasiLoadState_() {
+  permLokasi = { mode: 'all', set: {}, dirty: false };
+  if (!globalPermissionsData) return;
+  const rows = globalPermissionsData.rows.filter(r => r.moduleKey === 'lokasi' && r.scopeType === permCurrentScope.type && r.scopeValue === permCurrentScope.value);
+  if (!rows.length) { permLokasi.mode = permCurrentScope.type === 'USER' ? 'role' : (permCurrentScope.value === 'HR' || permCurrentScope.value === 'Admin' ? 'all' : 'selected'); }
+  else if (rows.some(r => r.featureKey === '*' && r.allowed)) permLokasi.mode = 'all';
+  else { permLokasi.mode = 'selected'; rows.forEach(r => { if (r.featureKey !== '*' && r.allowed) permLokasi.set[String(r.featureKey).trim()] = true; }); }
+  permLokasiRender();
+}
+
+function permLokasiTargetRole_() {
+  if (permCurrentScope.type === 'ROLE') return permCurrentScope.value;
+  const u = globalPermissionsData && globalPermissionsData.users.find(x => x.id === permCurrentScope.value);
+  return u ? u.role : '';
+}
+
+function permLokasiRender() {
+  const box = document.getElementById('permLokasiBox');
+  if (!box || !globalPermissionsData) return;
+  if (permCurrentScope.type === 'USER' && !permCurrentScope.value) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+
+  const isAdmin = permLokasiTargetRole_() === 'Admin';
+  const opts = [];
+  if (permCurrentScope.type === 'USER') opts.push(['role', 'Ikut Role (' + (permLokasiTargetRole_() || '-') + ')']);
+  opts.push(['all', 'Semua lokasi'], ['selected', 'Hanya lokasi terpilih']);
+  document.getElementById('permLokasiMode').innerHTML = isAdmin
+    ? '<span class="text-slate-500 italic">Admin selalu memiliki akses ke semua lokasi.</span>'
+    : opts.map(o => `<label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="permLokMode" value="${o[0]}" ${permLokasi.mode === o[0] ? 'checked' : ''} onchange="permLokasiSetMode('${o[0]}')"><span class="font-medium text-slate-700">${o[1]}</span></label>`).join('');
+
+  const picker = document.getElementById('permLokasiPicker');
+  if (isAdmin || permLokasi.mode !== 'selected') { picker.classList.add('hidden'); return; }
+  picker.classList.remove('hidden');
+
+  const q = (document.getElementById('permLokasiCari').value || '').trim().toLowerCase();
+  const all = globalPermissionsData.lokasi || [];
+  const shown = all.filter(l => !q || (l.kodeLokasi + ' ' + l.namaLokasi).toLowerCase().includes(q));
+  document.getElementById('permLokasiList').innerHTML = shown.map(l => {
+    const kode = String(l.kodeLokasi).trim();
+    return `<label class="flex items-center gap-2 px-2 py-1 rounded border ${permLokasi.set[kode] ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'} cursor-pointer"><input type="checkbox" ${permLokasi.set[kode] ? 'checked' : ''} onchange="permLokasiToggle('${kode}', this.checked)"><span class="text-[11px] text-slate-700">${kode} - ${l.namaLokasi}</span></label>`;
+  }).join('') || '<div class="text-[11px] text-slate-400">Tidak ada lokasi.</div>';
+  document.getElementById('permLokasiCount').textContent = Object.keys(permLokasi.set).length + ' dari ' + all.length + ' lokasi dipilih';
+}
+
+function permLokasiMarkDirty_() {
+  permLokasi.dirty = true;
+  document.getElementById('permSaveBar').classList.remove('hidden');
+}
+function permLokasiSetMode(m) { permLokasi.mode = m; permLokasiMarkDirty_(); permLokasiRender(); }
+function permLokasiToggle(kode, on) { if (on) permLokasi.set[kode] = true; else delete permLokasi.set[kode]; permLokasiMarkDirty_(); permLokasiRender(); }
+function permLokasiPilihSemua(on) {
+  const q = (document.getElementById('permLokasiCari').value || '').trim().toLowerCase();
+  (globalPermissionsData.lokasi || []).filter(l => !q || (l.kodeLokasi + ' ' + l.namaLokasi).toLowerCase().includes(q)).forEach(l => {
+    const kode = String(l.kodeLokasi).trim();
+    if (on) permLokasi.set[kode] = true; else delete permLokasi.set[kode];
+  });
+  permLokasiMarkDirty_(); permLokasiRender();
+}
+
+function loadPermissionsUI() {
+  if (!currentUser || currentUser.role !== 'Admin') return; // panel ini khusus Admin
+  const container = document.getElementById('permMatrixContainer');
+  if (container) container.innerHTML = `<p class="text-xs text-slate-400 italic p-4">Memuat data hak akses...</p>`;
+
+  google.script.run
+    .withSuccessHandler(data => {
+      globalPermissionsData = data;
+      permPendingChanges = {};
+      document.getElementById('permSaveBar').classList.add('hidden');
+      populatePermissionUserSelect_();
+      renderPermissionsEditor();
+      permLokasiLoadState_();
+    })
+    .withFailureHandler(err => {
+      if (container) container.innerHTML = `<p class="text-xs text-red-500 p-4">Gagal memuat data hak akses: ${err.message}</p>`;
+    })
+    .getPermissionsMatrix();
+}
+
+function populatePermissionUserSelect_() {
+  const sel = document.getElementById('permUserSelect');
+  if (!sel || !globalPermissionsData) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">-- Pilih User --</option>' +
+    globalPermissionsData.users.map(u => `<option value="${u.id}">${u.username} (${u.role})</option>`).join('');
+  sel.value = current;
+}
+
+function permSwitchScopeRole(role) {
+  if ((Object.keys(permPendingChanges).length || permLokasi.dirty) && !confirm('Ada perubahan yang belum disimpan, lanjut pindah dan buang perubahan tersebut?')) return;
+  permPendingChanges = {};
+  document.getElementById('permSaveBar').classList.add('hidden');
+  permCurrentScope = { type: 'ROLE', value: role };
+  document.getElementById('permUserSelect').value = '';
+  document.querySelectorAll('.perm-role-tab').forEach(b => {
+    b.classList.remove('bg-brand-500', 'text-white');
+    b.classList.add('bg-slate-100', 'text-slate-600');
+  });
+  const btn = document.getElementById('permRoleTab-' + role);
+  if (btn) { btn.classList.remove('bg-slate-100', 'text-slate-600'); btn.classList.add('bg-brand-500', 'text-white'); }
+  renderPermissionsEditor();
+  permLokasiLoadState_();
+}
+
+function permSwitchScopeUser() {
+  if ((Object.keys(permPendingChanges).length || permLokasi.dirty) && !confirm('Ada perubahan yang belum disimpan, lanjut pindah dan buang perubahan tersebut?')) {
+    document.getElementById('permUserSelect').value = permCurrentScope.type === 'USER' ? permCurrentScope.value : '';
+    return;
+  }
+  permPendingChanges = {};
+  document.getElementById('permSaveBar').classList.add('hidden');
+  const userId = document.getElementById('permUserSelect').value;
+  document.querySelectorAll('.perm-role-tab').forEach(b => {
+    b.classList.remove('bg-brand-500', 'text-white');
+    b.classList.add('bg-slate-100', 'text-slate-600');
+  });
+  permCurrentScope = { type: 'USER', value: userId };
+  renderPermissionsEditor();
+  permLokasiLoadState_();
+}
+
+// Mengembalikan nilai efektif (ditimpa pending change jika ada), serta flag
+// "inherited" khusus untuk override per-User yang belum pernah di-set
+// (artinya nilai saat ini masih ikut default Role user tsb).
+function permGetEffectiveValue_(moduleKey, featureKey) {
+  const key = [permCurrentScope.type, permCurrentScope.value, moduleKey, featureKey].join('|');
+  if (Object.prototype.hasOwnProperty.call(permPendingChanges, key)) {
+    return { value: permPendingChanges[key].allowed, inherited: false };
+  }
+
+  const row = globalPermissionsData.rows.find(r =>
+    r.scopeType === permCurrentScope.type && r.scopeValue === permCurrentScope.value &&
+    r.moduleKey === moduleKey && r.featureKey === featureKey);
+  if (row) return { value: row.allowed, inherited: false };
+
+  if (permCurrentScope.type === 'USER') {
+    const u = globalPermissionsData.users.find(x => x.id === permCurrentScope.value);
+    const role = u ? u.role : null;
+    const roleRow = globalPermissionsData.rows.find(r =>
+      r.scopeType === 'ROLE' && r.scopeValue === role && r.moduleKey === moduleKey && r.featureKey === featureKey);
+    return { value: roleRow ? roleRow.allowed : (role === 'Admin'), inherited: true };
+  }
+  return { value: false, inherited: false };
+}
+
+function renderPermissionsEditor() {
+  const container = document.getElementById('permMatrixContainer');
+  if (!container || !globalPermissionsData) return;
+
+  if (permCurrentScope.type === 'USER' && !permCurrentScope.value) {
+    container.innerHTML = `<p class="text-xs text-slate-400 italic p-4">Pilih user di atas untuk mengatur pengecualian hak akses khusus user tersebut.</p>`;
+    return;
+  }
+
+  const modules = globalPermissionsData.modules;
+  const labels = globalPermissionsData.featureLabels;
+
+  container.innerHTML = modules.map(mod => {
+    const featureKeys = ['view'].concat(mod.features || []);
+    const cells = featureKeys.map(feat => {
+      const eff = permGetEffectiveValue_(mod.key, feat);
+      const label = labels[feat] || feat;
+      const checked = eff.value ? 'checked' : '';
+      const badge = eff.inherited ? `<span class="text-[9px] text-slate-400 italic ml-1">(ikut role)</span>` : '';
+      return `
+        <label class="flex items-center gap-2 px-3 py-1.5 rounded-lg border ${eff.value ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'} cursor-pointer">
+          <input type="checkbox" ${checked} onchange="permToggle('${mod.key}', '${feat}', this.checked)" class="rounded text-brand-500 focus:ring-brand-400">
+          <span class="text-[11px] font-medium text-slate-700">${label}</span>${badge}
+        </label>`;
+    }).join('');
+
+    return `
+      <div class="border border-slate-200 rounded-xl p-3">
+        <div class="text-xs font-bold text-slate-800 mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-cube text-brand-500"></i> ${mod.label}
+        </div>
+        <div class="flex flex-wrap gap-2">${cells}</div>
+      </div>`;
+  }).join('');
+}
+
+function permToggle(moduleKey, featureKey, checked) {
+  if (permCurrentScope.type === 'ROLE' && permCurrentScope.value === 'Admin') {
+    alert('Role Admin selalu memiliki akses penuh dan tidak bisa dibatasi, supaya tidak ada yang terkunci dari sistemnya sendiri.');
+    renderPermissionsEditor();
+    return;
+  }
+  const key = [permCurrentScope.type, permCurrentScope.value, moduleKey, featureKey].join('|');
+  permPendingChanges[key] = {
+    scopeType: permCurrentScope.type,
+    scopeValue: permCurrentScope.value,
+    moduleKey: moduleKey,
+    featureKey: featureKey,
+    allowed: checked
+  };
+  renderPermissionsEditor();
+  document.getElementById('permSaveBar').classList.remove('hidden');
+}
+
+function savePermissionsChanges() {
+  const changes = Object.values(permPendingChanges);
+  if (!changes.length && !permLokasi.dirty) { alert('Tidak ada perubahan untuk disimpan.'); return; }
+
+  const payload = { requesterUsername: currentUser.username, token: authToken_(), changes: changes };
+  if (permLokasi.dirty) {
+    const sc = { scopeType: permCurrentScope.type, scopeValue: permCurrentScope.value };
+    payload.clearLokasiScopes = [sc];
+    if (permLokasi.mode === 'all') {
+      changes.push({ ...sc, moduleKey: 'lokasi', featureKey: '*', allowed: true });
+    } else if (permLokasi.mode === 'selected') {
+      const kodes = Object.keys(permLokasi.set);
+      if (!kodes.length) { alert('Pilih minimal satu lokasi, atau ganti ke "Semua lokasi".'); return; }
+      kodes.forEach(k => changes.push({ ...sc, moduleKey: 'lokasi', featureKey: k, allowed: true }));
+    } // mode 'role' = hanya hapus aturan khusus user, ikut Role
+  }
+
+  const btn = document.getElementById('btnSavePermissions');
+  btn.disabled = true;
+  btn.innerText = 'Menyimpan...';
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan Hak Akses`;
+      alert(res.message || 'Tersimpan.');
+      if (res.success) {
+        permPendingChanges = {};
+        document.getElementById('permSaveBar').classList.add('hidden');
+        loadPermissionsUI();
+      }
+    })
+    .withFailureHandler(err => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan Hak Akses`;
+      alert('Gagal menyimpan: ' + err.message);
+    })
+    .savePermissionsMatrix(payload);
+}
+
+  /**
+   * Memuat daftar Manager dari backend ke seluruh dropdown Manager Approver
+   */
+  function loadManagerOptions() {
+    google.script.run
+      .withSuccessHandler(managers => {
+        const selects = document.querySelectorAll('.manager-approver-select');
+        
+        selects.forEach(select => {
+          const currentValue = select.value;
+          select.innerHTML = '<option value="">-- Pilih Manager Approver --</option>';
+          
+          managers.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.username;
+            opt.textContent = m.label;
+            select.appendChild(opt);
+          });
+          
+          select.value = currentValue;
+        });
+      })
+      .getManagerList(currentUser ? currentUser.role : '');
+  }
+
+  // Panggil fungsi pemuat manager saat halaman/DOM selesai dimuat
+  document.addEventListener('DOMContentLoaded', function() {
+    loadManagerOptions();
+  });
+
+  // =============================================================
+  // MODUL PAYROLL & SLIP GAJI
+  // =============================================================
+  let __masterGajiCache = [];
+  let __lokasiKerjaCache = [];
+  let __levelJabatanCache = {}; // { "Nama Jabatan": "Staff"/"SPV"/"Manager" } - dari sheet MasterLevelJabatan
+  let __payrollInputCache = {};
+  
+  function splitPeriode(val) {
+    if (!val) return null;
+    const parts = val.split('-');
+    return { bulan: parseInt(parts[1], 10), tahun: parseInt(parts[0], 10) };
+  }
+
+  function defaultPeriodeValue_() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  function loadInputBulananTab() {
+    const el = document.getElementById('pinPeriode');
+    if (!el.value) el.value = defaultPeriodeValue_();
+    loadPayrollInputUI();
+  }
+
+  function loadAbsensiTab() {
+    const el = document.getElementById('absPeriode');
+    if (!el.value) el.value = defaultPeriodeValue_();
+    loadAbsensiLokasiFilterOptions();
+    loadAbsensiRekap();
+  }
+
+  // ---------------- ABSENSI (ADMS) ----------------
+  let __absensiRekapCache = [];
+  let __absLokasiNames = {};
+
+  // Isi dropdown filter lokasi dari MasterLokasiKerja (dipanggil saat sub-tab Absensi dibuka)
+  function loadAbsensiLokasiFilterOptions() {
+    google.script.run.withSuccessHandler(list => {
+      __absLokasiNames = {};
+      const sel = document.getElementById('absLokasi');
+      const current = sel.value;
+      list = filterLokasiList_(list);
+      list.forEach(l => { __absLokasiNames[l.kodeLokasi] = l.namaLokasi; });
+      sel.innerHTML = '<option value="">Semua Lokasi</option>' +
+        list.map(l => `<option value="${l.kodeLokasi}">${l.kodeLokasi} - ${l.namaLokasi}</option>`).join('');
+      sel.value = current;
+    }).getLokasiKerjaList();
+  }
+
+  // Hitung rentang cutoff payroll (tgl 16 bulan sebelumnya s.d. tgl 15 bulan berjalan) sebagai
+  // string "yyyy-MM-dd", mencerminkan getPayrollPeriodeRange_ di server.
+  function getPeriodeCutoffRangeClient(bulan, tahun) {
+    const akhir = new Date(tahun, bulan - 1, 15);
+    const mulai = new Date(tahun, bulan - 2, 16);
+    const fmt = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return { mulai: fmt(mulai), selesai: fmt(akhir) };
+  }
+
+  function syncAbsensiAction() {
+    const periodeVal = document.getElementById('absPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(periodeVal);
+    const range = getPeriodeCutoffRangeClient(bulan, tahun);
+
+    if (!confirm(`Sync absensi dari ADMS untuk periode ${range.mulai} s.d. ${range.selesai}?\n\nIni menarik data SEMUA lokasi sekaligus dari mesin fingerprint. Data lama di rentang tanggal ini akan ditimpa.`)) return;
+
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Syncing...';
+
+    google.script.run
+      .withFailureHandler(err => {
+        btn.disabled = false; btn.innerHTML = originalHtml;
+        alert('Gagal sync: ' + (err && err.message ? err.message : err));
+      })
+      .withSuccessHandler(res => {
+        btn.disabled = false; btn.innerHTML = originalHtml;
+        let msg = res.message;
+        if (res.errors && res.errors.length) {
+          msg += '\n\n' + res.errors.length + ' baris dilewati (badge tidak terdaftar di Data Master Karyawan):\n' + res.errors.slice(0, 10).join('\n');
+          if (res.errors.length > 10) msg += '\n... dan ' + (res.errors.length - 10) + ' lainnya.';
+        }
+        alert(msg);
+        if (res.success) loadAbsensiRekap();
+      })
+      .syncAbsensiFromADMS(range.mulai, range.selesai, (currentUser && currentUser.lokasiAkses) ? currentUser.lokasiAkses : null);
+  }
+
+  function loadAbsensiRekap() {
+    const periodeVal = document.getElementById('absPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(periodeVal);
+    const tbody = document.getElementById('tblAbsensiBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Memuat rekap...</td></tr>';
+
+    google.script.run
+      .withFailureHandler(err => {
+        console.error('getAbsensiRekap gagal:', err);
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-red-500">Gagal memuat rekap: ' + (err && err.message ? err.message : err) + '</td></tr>';
+      })
+      .withSuccessHandler(rekap => {
+        __absensiRekapCache = filterByKodeLokasi_(rekap).map(r => ({ ...r, bulan, tahun }));
+        renderAbsensiTable();
+      })
+      .getAbsensiRekap(bulan, tahun);
+  }
+
+  function renderAbsensiTable() {
+    const tbody = document.getElementById('tblAbsensiBody');
+    const filterKode = document.getElementById('absLokasi').value;
+    const summary = document.getElementById('absSummary');
+
+    const list = __absensiRekapCache.filter(r => !filterKode || String(r.kodeLokasi).trim() === filterKode);
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">' +
+        (__absensiRekapCache.length ? 'Tidak ada data absensi di lokasi ini.' : 'Belum ada data. Klik "Sync dari ADMS" lalu "Muat Rekap".') + '</td></tr>';
+      summary.textContent = '';
+      return;
+    }
+
+    const groups = {};
+    list.forEach(r => {
+      const kode = String(r.kodeLokasi).trim();
+      (groups[kode] = groups[kode] || []).push(r);
+    });
+
+    const rowHtml = r => `
+      <tr class="border-b hover:bg-slate-50">
+        <td class="px-4 py-3 font-bold pl-8">${r.nama}</td>
+        <td class="px-4 py-3">${r.kodeLokasi}</td>
+        <td class="px-4 py-3">${r.hariHadir} hari${r.hariScanTunggal > 0 ? ` <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600" title="Hari dengan satu kali scan saja (jam masuk atau pulang tidak lengkap)">${r.hariScanTunggal} scan tunggal</span>` : ''}</td>
+        <td class="px-4 py-3">${r.hariTerlambat > 0 ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">${r.hariTerlambat} hari</span>` : '-'}</td>
+        <td class="px-4 py-3 text-center">
+          <button onclick="openModalAbsensiDetail('${r.idKaryawan}', '${r.nama.replace(/'/g, "\\'")}', ${r.bulan}, ${r.tahun})" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold"><i class="fa-solid fa-eye"></i> Detail</button>
+        </td>
+      </tr>
+    `;
+
+    tbody.innerHTML = Object.keys(groups).sort().map(kode => {
+      const members = groups[kode].slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)));
+      const namaLokasi = __absLokasiNames[kode] ? ' - ' + __absLokasiNames[kode] : '';
+      const header = `
+        <tr class="bg-slate-50 border-b border-t">
+          <td colspan="5" class="px-4 py-2 text-[11px] font-bold text-slate-700">
+            <i class="fa-solid fa-location-dot text-brand-500 mr-1"></i>${kode}${namaLokasi}
+            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-700">${members.length} karyawan</span>
+          </td>
+        </tr>`;
+      return header + members.map(rowHtml).join('');
+    }).join('');
+
+    summary.textContent = list.length + ' karyawan punya data absensi di periode ini';
+  }
+
+  function tarikAbsensiAction() {
+    const periodeVal = document.getElementById('absPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(periodeVal);
+
+    if (!confirm('Tarik Hari Kerja Aktual & Datang Terlambat dari rekap absensi ke Input Data Bulanan?')) return;
+
+    google.script.run
+      .withFailureHandler(err => alert('Gagal: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(res => {
+        alert(res.message);
+      })
+      .tarikAbsensiKePayrollInput(bulan, tahun, currentUser ? currentUser.username : '', (currentUser && currentUser.lokasiAkses) ? currentUser.lokasiAkses : null);
+  }
+
+  function openModalAbsensiDetail(idKaryawan, nama, bulan, tahun) {
+    document.getElementById('absDetailTitle').textContent = 'Detail Absensi - ' + nama;
+    document.getElementById('absDetailBody').innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Memuat...</td></tr>';
+    openModal('modalAbsensiDetail');
+
+    google.script.run
+      .withFailureHandler(err => {
+        document.getElementById('absDetailBody').innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-red-500">Gagal memuat: ' + (err && err.message ? err.message : err) + '</td></tr>';
+      })
+      .withSuccessHandler(detail => {
+        const tbody = document.getElementById('absDetailBody');
+        if (!detail || !detail.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = detail.map(d => `
+          <tr class="border-b">
+            <td class="px-4 py-2">${d.tanggal}</td>
+            <td class="px-4 py-2">${d.jamMasuk}</td>
+            <td class="px-4 py-2">${d.jamPulang}</td>
+            <td class="px-4 py-2">${d.status === 'Terlambat' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Terlambat ${d.terlambatMenit} menit</span>` : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">Hadir</span>'}</td>
+          </tr>
+        `).join('');
+      })
+      .getAbsensiDetail(idKaryawan, bulan, tahun);
+  }
+
+  // Daftar Job Title standar (dropdown Jabatan di Data Master Karyawan)
+  const JABATAN_OPTIONS = [
+    "Direktur", "Logistik & Warehouse Manager", "Area Manager", "Chef", "Trainer",
+    "Internal Audit Supervisor", "Internal Audit Staff", "Manager Finance & Accounting",
+    "Assistant Manager Finance & Accounting", "Finance Supervisor", "Accounting Supervisor",
+    "Account Payable Staff", "Account Receivable Staff", "Finance Accountig Tax Spv", "Accounting Staff",
+    "Finance Staff", "Kurir", "Purchasing Manager", "Purchasing Supervisor", "Purchasing Senior Staff",
+    "Purchasing Staff", "IT Support", "Driver Pribadi", "QA & QC Supervisor", "QA & QC Staff",
+    "Project & Design Supervisor", "Admin Project", "Assistant Manager HRD", "HRD Supervisor",
+    "HRD Staff", "Office Girl", "Assistant Manager Bussines Development", "Marketing Manager",
+    "Marketing Supervisor", "Marketing Staff", "Design Grafis Staff", "Marketing Senior Staff",
+    "Training Development Manager", "Training Development Senior Staff", "Training Development Staff",
+    "Personal Assistant", "Admin Warehouse Senior Staff", "Admin Logistik", "Admin Checker",
+    "Admin Gudang", "Gudang Staff", "Driver", "Teknisi Staff", "Store Supervisor", "Cashier Leader",
+    "Leader kitchen", "Cook Helper Agemono", "Cook Helper Sushi", "Cashier", "Stocker"
+  ];
+
+
+
+
+  function loadLevelJabatanCache() {
+    google.script.run.withSuccessHandler(list => {
+      __levelJabatanCache = {};
+      (list || []).forEach(r => { __levelJabatanCache[r.jabatan] = r.level; });
+    }).getLevelJabatanList();
+  }
+
+
+  // ---------------- MASTER GAJI KARYAWAN ----------------
+  function loadMasterGajiUI() {
+    google.script.run
+      .withFailureHandler(err => {
+        console.error('getMasterGajiKaryawan gagal:', err);
+      })
+      .withSuccessHandler(list => {
+        list = filterByKodeLokasi_(list);
+        __masterGajiCache = list;
+      }).getMasterGajiKaryawan();
+
+    loadKodeLokasiOptions();
+
+    google.script.run
+      .withFailureHandler(err => console.error('getKaryawanList gagal:', err))
+      .withSuccessHandler(list => {
+        list = list || [];
+        document.getElementById('mgKaryawanList').innerHTML = list.map(k => `<option value="${k.id}">${k.nama}</option>`).join('');
+      }).getKaryawanList();
+  }
+
+  // Diisi terpisah (dan dipanggil ulang saat modal dibuka) supaya dropdown Kode Lokasi
+  // selalu terisi meski modal dibuka sebelum load awal tab selesai / gagal.
+  function loadKodeLokasiOptions() {
+    loadLevelJabatanCache();
+    google.script.run
+      .withFailureHandler(err => {
+        console.error('getLokasiKerjaList gagal:', err);
+        const sel = document.getElementById('mgKodeLokasi');
+        sel.innerHTML = '<option value="">-- Gagal memuat lokasi: ' + (err && err.message ? err.message : err) + ' --</option>';
+      })
+      .withSuccessHandler(list => {
+        list = filterLokasiList_(list);
+        __lokasiKerjaCache = list;
+        refreshLokasiSelects_(list);
+        const sel = document.getElementById('mgKodeLokasi');
+        if (sel.dataset.onlyKode) list = list.filter(l => String(l.kodeLokasi) === String(sel.dataset.onlyKode)); // dibuka dari satu lokasi: hanya lokasi itu
+        const currentVal = sel.value || sel.dataset.preset || '';
+        if (!list.length) {
+          sel.innerHTML = '<option value="">-- Belum ada data lokasi, jalankan setupPayrollModule() --</option>';
+          return;
+        }
+        sel.innerHTML = '<option value="">-- Pilih Kode Lokasi --</option>' +
+          list.map(l => `<option value="${l.kodeLokasi}">${l.kodeLokasi} - ${l.namaLokasi}</option>`).join('');
+      if (currentVal) sel.value = currentVal;
+      sel.dataset.preset = '';
+    }).getLokasiKerjaList();
+  }
+
+  function formatDateForInput(val) {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function openModalMasterGaji(idKaryawan) {
+    const form = document.getElementById('formMasterGaji');
+    form.reset();
+    delete document.getElementById('mgKodeLokasi').dataset.onlyKode;
+    const existing = idKaryawan ? __masterGajiCache.find(k => String(k.idKaryawan) === String(idKaryawan)) : null;
+
+    // Pastikan dropdown Kode Lokasi & Jabatan terisi setiap kali modal dibuka
+    loadKodeLokasiOptions();
+    const jabatanSel = document.getElementById('mgJabatan');
+    jabatanSel.innerHTML = '<option value="">-- Pilih Jabatan --</option>' +
+      JABATAN_OPTIONS.map(j => `<option value="${j}">${j}</option>`).join('');
+
+    document.getElementById('mgTitle').textContent = existing ? 'Edit Karyawan - ' + existing.nama : 'Tambah Karyawan';
+    document.getElementById('mgIsEdit').value = existing ? '1' : '0';
+    document.getElementById('mgIdKaryawan').value = existing ? existing.idKaryawan : '';
+    document.getElementById('mgIdKaryawan').disabled = !!existing && !/^EMP-/i.test(String(existing.idKaryawan));
+    form.dataset.idLama = existing ? existing.idKaryawan : '';
+    document.getElementById('mgNama').value = existing ? existing.nama : '';
+    document.getElementById('mgKodeLokasi').value = existing ? existing.kodeLokasi : '';
+    document.getElementById('mgJabatan').value = existing ? existing.jabatan : '';
+    document.getElementById('mgStatusKaryawan').value = existing ? existing.statusKaryawan : 'Tetap';
+    document.getElementById('mgStatusAktif').value = existing ? existing.statusAktif : 'Aktif';
+    openModal('modalMasterGaji');
+  }
+
+  function submitMasterGaji(e) {
+    e.preventDefault();
+    const isEdit = document.getElementById('mgIsEdit').value === '1';
+    const data = {
+      idKaryawan: document.getElementById('mgIdKaryawan').value.trim(),
+      nama: document.getElementById('mgNama').value.trim(),
+      kodeLokasi: document.getElementById('mgKodeLokasi').value,
+      jabatan: document.getElementById('mgJabatan').value.trim(),
+      statusKaryawan: document.getElementById('mgStatusKaryawan').value,
+      statusAktif: document.getElementById('mgStatusAktif').value
+    };
+    const idLama = document.getElementById('formMasterGaji').dataset.idLama;
+    if (isEdit && idLama && data.idKaryawan !== idLama) { data.idBaru = data.idKaryawan; data.idKaryawan = idLama; }
+
+    const handler = res => {
+      alert(res.message);
+      if (res.success) {
+        closeModal('modalMasterGaji');
+        document.getElementById('mgIdKaryawan').disabled = false;
+        loadMasterGajiUI();
+        if (!document.getElementById('tab-master-karyawan').classList.contains('hidden')) loadMasterKaryawan();
+      }
+    };
+    const failHandler = err => {
+      alert('Gagal menyimpan Data Master Karyawan: ' + (err && err.message ? err.message : err));
+    };
+
+    if (isEdit) {
+      google.script.run.withSuccessHandler(handler).withFailureHandler(failHandler).updateMasterGajiKaryawan(data);
+    } else {
+      google.script.run.withSuccessHandler(handler).withFailureHandler(failHandler).saveMasterGajiKaryawan(data);
+    }
+  }
+
+  
+  // Dropdown lokasi di semua form mengikuti Master Lokasi Kerja (nama lokasi), selalu ikut berubah
+  function refreshLokasiSelects_(list) {
+    list = filterLokasiList_(list);
+    const names = []; (list || []).forEach(l => { const n = String(l.namaLokasi || '').trim(); if (n && !names.includes(n)) names.push(n); });
+    if (!names.length) return;
+    ['ovtOutlet'].forEach(id => {
+      const el = document.getElementById(id); if (!el) return;
+      const cur = el.value; populateSelect(id, names);
+      if (names.includes(cur)) el.value = cur;
+    });
+  }
+  function sinkronKaryawanBaruUI() {
+    google.script.run.withFailureHandler(err => alert('Gagal: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(res => { alert(res.message); if (res.success) loadMasterKaryawan(); })
+      .sinkronKaryawanBaru(currentUser.role);
+  }
+
+  // ---------------- DATA MASTER KARYAWAN (semua lokasi + karyawan per lokasi) ----------------
+  let __mkLokasi = [];
+  function mkError_(err) { document.getElementById('mkList').innerHTML = '<div class="text-xs text-red-500">Gagal memuat: ' + (err && err.message ? err.message : err) + '</div>'; }
+  function loadMasterKaryawan() {
+    google.script.run.withFailureHandler(mkError_).withSuccessHandler(lokasi => {
+      __mkLokasi = filterLokasiList_(lokasi);
+      google.script.run.withFailureHandler(mkError_).withSuccessHandler(list => {
+        __masterGajiCache = filterByKodeLokasi_(list);
+        const sel = document.getElementById('mkLokasi'), cur = sel.value;
+        sel.innerHTML = '<option value="">Semua lokasi</option>' + __mkLokasi.map(l => `<option value="${l.kodeLokasi}">${l.kodeLokasi} - ${l.namaLokasi}</option>`).join('');
+        sel.value = cur;
+        renderMasterKaryawan();
+      }).getMasterGajiKaryawan();
+    }).getLokasiKerjaList();
+  }
+  function renderMasterKaryawan() {
+    const q = document.getElementById('mkCari').value.trim().toLowerCase();
+    const fLok = document.getElementById('mkLokasi').value, fAktif = document.getElementById('mkAktif').value;
+    const filtering = !!(q || fLok || fAktif);
+    const groups = {}; __mkLokasi.forEach(l => { groups[String(l.kodeLokasi).trim()] = { nama: l.namaLokasi, tipe: l.tipeLokasi, all: [], rows: [] }; });
+    let total = 0;
+    __masterGajiCache.forEach(k => {
+      const kode = String(k.kodeLokasi).trim();
+      const g = groups[kode] || (groups[kode] = { nama: 'Kode lokasi tidak terdaftar', tipe: '', all: [], rows: [] });
+      g.all.push(k);
+      const hay = [k.idKaryawan, k.nama, k.jabatan].join(' ').toLowerCase();
+      if ((!q || hay.includes(q)) && (!fAktif || k.statusAktif === fAktif)) { g.rows.push(k); total++; }
+    });
+    const html = Object.keys(groups).sort().filter(kode => !fLok || kode === fLok).map(kode => {
+      const g = groups[kode];
+      if ((q || fAktif) && !g.rows.length) return '';
+      const aktif = g.all.filter(k => k.statusAktif === 'Aktif').length;
+      const rows = g.rows.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama))).map(k => `
+        <tr class="border-b hover:bg-slate-50">
+          <td class="px-4 py-2 font-bold text-brand-500">${k.idKaryawan}</td><td class="px-4 py-2">${k.nama}</td>
+          <td class="px-4 py-2">${k.jabatan || '-'}</td><td class="px-4 py-2">${k.statusKaryawan || '-'}</td><td class="px-4 py-2">${k.tglMasuk || '-'}</td>
+          <td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${k.statusAktif === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : k.statusAktif === 'Menunggu Data' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500'}">${k.statusAktif}</span></td>
+          <td class="px-4 py-2 text-center whitespace-nowrap">
+            <button onclick="openModalMutasi('${k.idKaryawan}')" class="px-2 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded text-[10px] font-bold"><i class="fa-solid fa-right-left"></i> Mutasi</button>
+            <button onclick="openModalMasterGaji('${k.idKaryawan}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold"><i class="fa-solid fa-pen"></i> Edit</button>
+            ${rbacHasAccess_('master-karyawan', 'hapus_karyawan') ? `<button onclick="konfirmasiHapusKaryawan('${k.idKaryawan}')" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[10px] font-bold"><i class="fa-solid fa-trash"></i> Hapus</button>` : ''}
+          </td></tr>`).join('');
+      return `<details class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" ${filtering && g.rows.length ? 'open' : ''}>
+        <summary class="px-4 py-3 cursor-pointer flex flex-wrap items-center gap-2 text-xs font-bold text-slate-700 bg-slate-50">
+          <i class="fa-solid fa-location-dot text-brand-500"></i>${kode} - ${g.nama}
+          ${g.tipe ? `<span class="px-2 py-0.5 rounded text-[10px] bg-slate-200 text-slate-600">${g.tipe}</span>` : ''}
+          <span class="px-2 py-0.5 rounded text-[10px] bg-sky-100 text-sky-700">${aktif} aktif / ${g.all.length} karyawan</span>
+          <span class="ml-auto flex gap-1">
+            ${rbacHasAccess_('master-karyawan', 'tambah_karyawan') ? `<button type="button" onclick="event.preventDefault();event.stopPropagation();openModalTambahKaryawan('${kode}')" class="px-2 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded text-[10px] font-bold"><i class="fa-solid fa-user-plus"></i> Karyawan</button>` : ''}
+            ${rbacHasAccess_('master-karyawan', 'tambah_lokasi') && groups[kode].nama !== 'Kode lokasi tidak terdaftar' ? `<button type="button" onclick="event.preventDefault();event.stopPropagation();openModalLokasiKerja('${kode}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold"><i class="fa-solid fa-pen"></i> Lokasi</button>` : ''}
+            ${rbacHasAccess_('master-karyawan', 'hapus_lokasi') && groups[kode].nama !== 'Kode lokasi tidak terdaftar' ? `<button type="button" onclick="event.preventDefault();event.stopPropagation();konfirmasiHapusLokasi('${kode}')" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[10px] font-bold"><i class="fa-solid fa-trash"></i> Hapus Lokasi</button>` : ''}
+          </span></summary>
+        <div class="overflow-x-auto"><table class="w-full text-xs text-left text-slate-600 min-w-[760px]"><thead class="text-slate-700 uppercase bg-slate-100 border-y"><tr>
+          <th class="px-4 py-2">ID</th><th class="px-4 py-2">Nama</th><th class="px-4 py-2">Jabatan</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Tgl Masuk</th><th class="px-4 py-2">Aktif</th><th class="px-4 py-2 text-center">Aksi</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7" class="px-4 py-4 text-center text-slate-400">Belum ada karyawan di lokasi ini.</td></tr>'}</tbody></table></div></details>`;
+    }).join('');
+    document.getElementById('mkList').innerHTML = html || '<div class="text-xs text-slate-400 px-1">Tidak ada data yang cocok.</div>';
+    document.getElementById('mkSummary').textContent = total + ' karyawan' + (filtering ? ' cocok' : ' di ' + __mkLokasi.length + ' lokasi');
+  }
+
+  // ---------------- HAPUS KARYAWAN / LOKASI ----------------
+  function konfirmasiHapusKaryawan(id) {
+    const k = (__masterGajiCache || []).find(x => String(x.idKaryawan) === String(id));
+    if (!k) return;
+    if (!confirm('Hapus karyawan ' + k.nama + ' (' + k.idKaryawan + ') dari Data Master Karyawan?\n\nRiwayat absensi, lembur, dan input bulanan yang sudah tercatat tidak ikut dihapus. Tindakan ini tidak bisa dibatalkan.\n\nJika hanya berhenti bekerja, lebih aman ubah Status Aktif menjadi Nonaktif lewat tombol Edit.')) return;
+    google.script.run
+      .withFailureHandler(err => alert('Gagal: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(res => { alert(res.message); if (res.success) loadMasterKaryawan(); })
+      .deleteMasterKaryawan(k.idKaryawan, authToken_(), currentUser.username);
+  }
+
+  function konfirmasiHapusLokasi(kode) {
+    const lok = (__mkLokasi || []).find(l => String(l.kodeLokasi).trim() === String(kode).trim());
+    const jumlah = (__masterGajiCache || []).filter(k => String(k.kodeLokasi).trim() === String(kode).trim()).length;
+    if (jumlah > 0) { alert('Lokasi ' + kode + ' masih punya ' + jumlah + ' karyawan.\n\nPindahkan karyawannya lewat Mutasi atau hapus dulu, baru lokasi bisa dihapus.'); return; }
+    if (!confirm('Hapus lokasi ' + kode + (lok ? ' - ' + lok.namaLokasi : '') + '?\n\nPengaturan akses lokasi yang menunjuk ke kode ini ikut dihapus. Riwayat absensi yang sudah tercatat tidak ikut dihapus. Tindakan ini tidak bisa dibatalkan.')) return;
+    google.script.run
+      .withFailureHandler(err => alert('Gagal: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(res => { alert(res.message); if (res.success) loadMasterKaryawan(); })
+      .deleteMasterLokasi(kode, authToken_(), currentUser.username);
+  }
+
+  // ---------------- EXPORT / IMPORT CSV MASTER GAJI ----------------
+  const MG_HR_ROLES = ['HR', 'Admin', 'HR Manager', 'HR Leader'];
+  const MG_EXPORT_HEADERS = ['No', 'ID Karyawan', 'Nama', 'Kode Lokasi', 'Nama Lokasi', 'Jabatan', 'Status Karyawan', 'Status Aktif'];
+
+  // Daftar karyawan siap export: urut Kode Lokasi lalu Nama (hanya lokasi yang boleh diakses user)
+  function mgExportRows_() {
+    const namaLok = {};
+    (__mkLokasi || []).concat(__lokasiKerjaCache || []).forEach(l => { namaLok[l.kodeLokasi] = l.namaLokasi; });
+    return (__masterGajiCache || []).slice()
+      .sort((a, b) => String(a.kodeLokasi).localeCompare(String(b.kodeLokasi)) || String(a.nama).localeCompare(String(b.nama)))
+      .map((k, i) => [i + 1, k.idKaryawan, k.nama, k.kodeLokasi, namaLok[k.kodeLokasi] || '', k.jabatan, k.statusKaryawan || '', k.statusAktif || '']);
+  }
+
+  // Excel rapi: header berwarna, lebar kolom pas, garis tabel, filter, judul baris beku
+  async function exportMasterKaryawanExcel() {
+    if (!MG_HR_ROLES.includes(currentUser.role)) { alert('Akses ditolak. Export hanya untuk HR & Admin.'); return; }
+    if (typeof ExcelJS === 'undefined') { alert('Library Excel belum termuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
+    const rows = mgExportRows_();
+    if (!rows.length) { alert('Belum ada data karyawan untuk diexport.'); return; }
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Shigeru HR - PT Mideli Makmur Jaya';
+    const ws = wb.addWorksheet('Data Master Karyawan', { views: [{ state: 'frozen', ySplit: 4, showGridLines: false }], pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+    const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
+    const widths = [6, 14, 30, 14, 30, 30, 16, 14];
+    ws.mergeCells(1, 1, 1, 8); ws.getCell(1, 1).value = 'DATA MASTER KARYAWAN'; ws.getCell(1, 1).font = { bold: true, size: 14 };
+    ws.mergeCells(2, 1, 2, 8); ws.getCell(2, 1).value = 'PT Mideli Makmur Jaya  |  Dicetak: ' + new Date().toLocaleString('id-ID') + '  |  Jumlah: ' + rows.length + ' karyawan';
+    ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: 'FF64748B' } };
+    MG_EXPORT_HEADERS.forEach((hd, i) => {
+      const c = ws.getCell(4, i + 1); c.value = hd; ws.getColumn(i + 1).width = widths[i];
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = border;
+    });
+    ws.getRow(4).height = 22;
+    rows.forEach((r, ri) => {
+      r.forEach((v, ci) => {
+        const c = ws.getCell(5 + ri, ci + 1); c.value = (ci === 1) ? String(v) : v; c.border = border; c.font = { size: 10 };
+        if (ci === 1) c.numFmt = '@';
+        c.alignment = { horizontal: (ci === 0 || ci === 3 || ci >= 6) ? 'center' : 'left', vertical: 'middle' };
+        if (ri % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        if (ci === 7) c.font = { size: 10, bold: true, color: { argb: v === 'Aktif' ? 'FF047857' : (v === 'Nonaktif' ? 'FFB91C1C' : 'FFB45309') } };
+      });
+    });
+    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + rows.length, column: 8 } };
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = 'Data_Master_Karyawan_' + new Date().toISOString().substring(0, 10) + '.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+
+  // ---------------- TEMPLATE & IMPORT EXCEL (Lokasi Baru + Karyawan Baru) ----------------
+  const IMP_LOK_HEAD = ['Kode Lokasi', 'Nama Lokasi', 'Jadwal Kerja', 'Jam Kerja', 'Hari Off', 'Pembagi Hari Kerja', 'Tipe Lokasi'];
+  const IMP_KAR_HEAD = ['ID Karyawan', 'Nama', 'Kode Lokasi', 'Jabatan', 'Status Karyawan', 'Status Aktif'];
+
+  async function downloadTemplateImport() {
+    if (!MG_HR_ROLES.includes(currentUser.role)) { alert('Akses ditolak. Template hanya untuk HR & Admin.'); return; }
+    if (typeof ExcelJS === 'undefined') { alert('Library Excel belum termuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Shigeru HR - PT Mideli Makmur Jaya';
+    const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } }, border = { top: thin, left: thin, bottom: thin, right: thin };
+    const head = (ws, cols, widths, color) => {
+      cols.forEach((t, i) => {
+        const cell = ws.getCell(1, i + 1); cell.value = t; ws.getColumn(i + 1).width = widths[i];
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' }; cell.border = border;
+      });
+      ws.getRow(1).height = 24; ws.views = [{ state: 'frozen', ySplit: 1 }];
+    };
+    const MAXR = 500;
+
+    // Sheet petunjuk
+    const pt = wb.addWorksheet('Petunjuk', { views: [{ showGridLines: false }] });
+    pt.getColumn(1).width = 4; pt.getColumn(2).width = 110;
+    const baris = [
+      ['TEMPLATE IMPORT - LOKASI BARU & KARYAWAN BARU', 'judul'],
+      ['', ''],
+      ['Cara pakai', 'sub'],
+      ['1. Isi sheet "Lokasi Baru" untuk lokasi/outlet baru (kosongkan kalau tidak ada lokasi baru).', ''],
+      ['2. Isi sheet "Karyawan Baru". Kode Lokasi boleh memakai lokasi yang baru kamu isi di sheet "Lokasi Baru".', ''],
+      ['3. Simpan file (.xlsx), lalu klik "Import Excel" di halaman Data Master Karyawan. Lokasi diproses lebih dulu, baru karyawan.', ''],
+      ['4. Jangan mengubah / menghapus baris judul (baris 1) dan jangan menambah sheet atau kolom baru.', ''],
+      ['', ''],
+      ['Aturan pengisian - Lokasi Baru', 'sub'],
+      ['Kode Lokasi & Nama Lokasi wajib. Contoh kode: MMJ-GGP. Kode yang sudah ada di sistem akan DIPERBARUI.', ''],
+      ['Jadwal Kerja contoh: Senin-Sabtu (Shifting).  Jam Kerja contoh: 09:00-18:00.  Hari Off contoh: Minggu.', ''],
+      ['Pembagi Hari Kerja angka (kosong = 25).  Tipe Lokasi: Store atau Head Office (pilih dari dropdown).', ''],
+      ['', ''],
+      ['Aturan pengisian - Karyawan Baru', 'sub'],
+      ['ID Karyawan, Nama, Kode Lokasi, dan Jabatan wajib. ID sama dengan badge/PIN di mesin absensi (9 digit, nol di depan jangan dihapus).', ''],
+      ['ID yang sudah ada di sistem akan DIPERBARUI (nama, lokasi, jabatan, status); perpindahan lokasi dicatat sebagai mutasi.', ''],
+      ['Jabatan, Status Karyawan, dan Status Aktif dipilih dari dropdown. Kode Lokasi harus sudah ada di sistem atau di sheet "Lokasi Baru".', ''],
+      ['Kosongkan Status Karyawan = Tetap, kosongkan Status Aktif = Aktif.', ''],
+      ['', ''],
+      ['Contoh baris', 'sub'],
+      ['Lokasi:   MMJ-GGP | Mideli Gading Griya | Senin-Sabtu (Shifting) | 09:00-18:00 | Minggu | 25 | Store', 'mono'],
+      ['Karyawan: 000202333 | Budi Santoso | MMJ-GGP | Store Supervisor | Tetap | Aktif', 'mono']
+    ];
+    baris.forEach((b, i) => {
+      const cell = pt.getCell(i + 1, 2); cell.value = b[0];
+      if (b[1] === 'judul') cell.font = { bold: true, size: 14, color: { argb: 'FF1E3A5F' } };
+      else if (b[1] === 'sub') cell.font = { bold: true, size: 11, color: { argb: 'FF0F766E' } };
+      else if (b[1] === 'mono') { cell.font = { name: 'Consolas', size: 10 }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }; }
+      else cell.font = { size: 10 };
+    });
+
+    // Sheet daftar (sumber dropdown)
+    const dl = wb.addWorksheet('Daftar', { state: 'hidden' });
+    const jab = JABATAN_OPTIONS.slice();
+    jab.forEach((j, i) => { dl.getCell(i + 1, 1).value = j; });
+    ['Tetap', 'Kontrak', 'Probation'].forEach((j, i) => { dl.getCell(i + 1, 2).value = j; });
+    ['Aktif', 'Nonaktif', 'Menunggu Data'].forEach((j, i) => { dl.getCell(i + 1, 3).value = j; });
+    ['Store', 'Head Office'].forEach((j, i) => { dl.getCell(i + 1, 4).value = j; });
+
+    // Sheet Lokasi Baru
+    const wl = wb.addWorksheet('Lokasi Baru');
+    head(wl, IMP_LOK_HEAD, [16, 30, 26, 16, 14, 20, 16], 'FF0F766E');
+    for (let r = 2; r <= MAXR; r++) {
+      [1, 2, 3, 4, 5].forEach(ci => { wl.getCell(r, ci).numFmt = '@'; });
+      wl.getCell(r, 7).dataValidation = { type: 'list', allowBlank: true, formulae: ['Daftar!$D$1:$D$2'] };
+    }
+
+    // Sheet Karyawan Baru
+    const wk = wb.addWorksheet('Karyawan Baru');
+    head(wk, IMP_KAR_HEAD, [16, 32, 16, 34, 18, 16], 'FF1E3A5F');
+    for (let r = 2; r <= MAXR; r++) {
+      [1, 2, 3].forEach(ci => { wk.getCell(r, ci).numFmt = '@'; });
+      wk.getCell(r, 4).dataValidation = { type: 'list', allowBlank: true, formulae: ['Daftar!$A$1:$A$' + jab.length] };
+      wk.getCell(r, 5).dataValidation = { type: 'list', allowBlank: true, formulae: ['Daftar!$B$1:$B$3'] };
+      wk.getCell(r, 6).dataValidation = { type: 'list', allowBlank: true, formulae: ['Daftar!$C$1:$C$3'] };
+    }
+
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    a.download = 'Template_Import_Lokasi_dan_Karyawan.xlsx';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  }
+
+  function impCellText_(cell) {
+    let v = cell ? cell.value : '';
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'object') {
+      if (v.richText) v = v.richText.map(t => t.text).join('');
+      else if (v.result !== undefined) v = v.result;
+      else if (v.text !== undefined) v = v.text;
+      else if (v instanceof Date) v = v.toISOString().substring(0, 10);
+    }
+    return String(v === null || v === undefined ? '' : v).trim();
+  }
+
+  // Baca sheet -> array baris (mulai baris 2), sesuai urutan kolom judul; baris kosong dilewati
+  function impReadSheet_(ws, jumlahKolom) {
+    const out = [];
+    if (!ws) return out;
+    ws.eachRow({ includeEmpty: false }, (row, n) => {
+      if (n < 2) return;
+      const vals = [];
+      for (let i = 1; i <= jumlahKolom; i++) vals.push(impCellText_(row.getCell(i)));
+      if (vals.some(x => x !== '')) out.push(vals);
+    });
+    return out;
+  }
+
+  function handleImportMasterGaji(input) {
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    if (!MG_HR_ROLES.includes(currentUser.role)) { alert('Akses ditolak. Import hanya untuk HR & Admin.'); return; }
+    if (typeof ExcelJS === 'undefined') { alert('Library Excel belum termuat. Periksa koneksi internet lalu muat ulang halaman.'); return; }
+    const reader = new FileReader();
+    reader.onload = async e => {
+      let lokRows, karRows;
+      try {
+        const wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(e.target.result);
+        const wl = wb.getWorksheet('Lokasi Baru'), wk = wb.getWorksheet('Karyawan Baru');
+        if (!wl && !wk) { alert('Sheet "Lokasi Baru" / "Karyawan Baru" tidak ditemukan.\n\nGunakan tombol Template Import dan jangan mengubah nama sheet.'); return; }
+        lokRows = impReadSheet_(wl, 7);
+        karRows = impReadSheet_(wk, 6);
+      } catch (err) { alert('File tidak bisa dibaca. Pastikan formatnya .xlsx dari template.\n' + (err && err.message ? err.message : err)); return; }
+      if (!lokRows.length && !karRows.length) { alert('Tidak ada data di file (sheet Lokasi Baru dan Karyawan Baru kosong).'); return; }
+      if (!confirm('Import ' + lokRows.length + ' lokasi dan ' + karRows.length + ' karyawan?\n\n- Kode lokasi / ID karyawan yang sudah ada akan DIPERBARUI\n- Yang belum ada akan DITAMBAHKAN\n- Perubahan lokasi karyawan dicatat sebagai mutasi')) return;
+
+      const gagal = err => alert('Gagal import: ' + (err && err.message ? err.message : err));
+      const tampil = (pesan, errors) => {
+        let msg = pesan.join('\n');
+        if (errors.length) {
+          msg += '\n\nBaris dilewati:\n' + errors.slice(0, 15).join('\n');
+          if (errors.length > 15) msg += '\n... dan ' + (errors.length - 15) + ' lainnya.';
+        }
+        alert(msg);
+        loadMasterKaryawan();
+      };
+      const jalankanKaryawan = (pesan, errors) => {
+        if (!karRows.length) { tampil(pesan, errors); return; }
+        google.script.run.withFailureHandler(gagal).withSuccessHandler(res => {
+          pesan.push(res.message);
+          tampil(pesan, errors.concat(res.errors || []));
+        }).importMasterGajiBulk(karRows, currentUser.role, currentUser.username);
+      };
+      if (!lokRows.length) { jalankanKaryawan([], []); return; }
+      google.script.run.withFailureHandler(gagal).withSuccessHandler(res => {
+        if (!res.success) { alert(res.message); return; }
+        jalankanKaryawan([res.message], res.errors || []);
+      }).importLokasiBulk(lokRows, currentUser.role);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------------- MUTASI LOKASI ----------------
+  function openModalMutasi(idKaryawan) {
+    const k = __masterGajiCache.find(x => String(x.idKaryawan) === String(idKaryawan));
+    if (!k) return;
+    google.script.run
+      .withFailureHandler(err => alert('Gagal memuat lokasi: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(list => {
+        __lokasiKerjaCache = list || [];
+        document.getElementById('mutId').value = k.idKaryawan;
+        document.getElementById('mutInfo').innerHTML = '<b>' + k.nama + '</b> (' + k.idKaryawan + ')<br>Lokasi saat ini: <b>' + k.kodeLokasi + '</b> &middot; ' + (k.jabatan || '-');
+        document.getElementById('mutKodeLokasi').innerHTML = '<option value="">-- Pilih lokasi tujuan --</option>' +
+          __lokasiKerjaCache.filter(l => String(l.kodeLokasi).trim() !== String(k.kodeLokasi).trim())
+            .map(l => `<option value="${l.kodeLokasi}">${l.kodeLokasi} - ${l.namaLokasi}</option>`).join('');
+        const jabs = JABATAN_OPTIONS.includes(k.jabatan) || !k.jabatan ? JABATAN_OPTIONS : [k.jabatan].concat(JABATAN_OPTIONS);
+        document.getElementById('mutJabatan').innerHTML = jabs.map(j => `<option value="${j}" ${j === k.jabatan ? 'selected' : ''}>${j}</option>`).join('');
+        document.getElementById('mutTanggal').value = formatDateForInput(new Date());
+        document.getElementById('mutAlasan').value = '';
+        openModal('modalMutasi');
+      }).getLokasiKerjaList();
+  }
+
+  function submitMutasi(e) {
+    e.preventDefault();
+    const id = document.getElementById('mutId').value;
+    const k = __masterGajiCache.find(x => String(x.idKaryawan) === String(id));
+    const data = {
+      idKaryawan: id,
+      kodeLokasiBaru: document.getElementById('mutKodeLokasi').value,
+      jabatanBaru: document.getElementById('mutJabatan').value,
+      tanggalEfektif: document.getElementById('mutTanggal').value,
+      alasan: document.getElementById('mutAlasan').value.trim()
+    };
+    if (!data.kodeLokasiBaru) { alert('Pilih lokasi tujuan.'); return; }
+    if (!confirm('Mutasikan ' + (k ? k.nama : id) + ' ke ' + data.kodeLokasiBaru + '?\n\nPerubahan LANGSUNG berlaku.')) return;
+    google.script.run
+      .withFailureHandler(err => alert('Gagal mutasi: ' + (err && err.message ? err.message : err)))
+      .withSuccessHandler(res => {
+        alert(res.message);
+        if (res.success) { closeModal('modalMutasi'); loadMasterKaryawan(); }
+      })
+      .mutasiKaryawan(data, currentUser.role, currentUser.username);
+  }
+
+  function openModalRiwayatMutasi() {
+    const tbody = document.getElementById('tblMutasiBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-slate-400">Memuat...</td></tr>';
+    openModal('modalRiwayatMutasi');
+    google.script.run
+      .withFailureHandler(err => { tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-red-500">Gagal memuat: ' + (err && err.message ? err.message : err) + '</td></tr>'; })
+      .withSuccessHandler(list => {
+        list = list || [];
+        tbody.innerHTML = list.length ? list.map(m => `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="px-4 py-3 whitespace-nowrap">${m.tanggalEfektif}</td>
+            <td class="px-4 py-3"><b>${m.nama}</b><br><span class="text-slate-400">${m.idKaryawan}</span></td>
+            <td class="px-4 py-3 whitespace-nowrap">${m.lokasiAsal} &rarr; <b>${m.lokasiTujuan}</b></td>
+            <td class="px-4 py-3">${m.jabatanLama === m.jabatanBaru ? m.jabatanBaru : m.jabatanLama + ' &rarr; ' + m.jabatanBaru}</td>
+            <td class="px-4 py-3">${m.alasan || '-'}</td>
+            <td class="px-4 py-3">${m.diinputOleh || '-'}</td>
+          </tr>`).join('') : '<tr><td colspan="6" class="px-4 py-6 text-center text-slate-400">Belum ada riwayat mutasi.</td></tr>';
+      }).getMutasiList();
+  }
+
+
+  // Tambah karyawan baru langsung ke lokasi tertentu (dari tombol "Karyawan" di Data Master Karyawan)
+  function openModalTambahKaryawan(kodeLokasi) {
+    openModalMasterGaji();
+    const sel = document.getElementById('mgKodeLokasi');
+    sel.dataset.onlyKode = kodeLokasi;
+    sel.dataset.preset = kodeLokasi;
+    const lok = (__mkLokasi || []).find(l => String(l.kodeLokasi) === String(kodeLokasi));
+    sel.innerHTML = '<option value="' + kodeLokasi + '">' + kodeLokasi + (lok ? ' - ' + lok.namaLokasi : '') + '</option>';
+    sel.value = kodeLokasi;
+  }
+
+  function openModalLokasiKerja(kodeLokasi) {
+    const form = document.getElementById('formLokasiKerja');
+    form.reset();
+    const existing = kodeLokasi ? (__mkLokasi.concat(__lokasiKerjaCache)).find(l => String(l.kodeLokasi) === String(kodeLokasi)) : null;
+
+    document.getElementById('lkTitle').textContent = existing ? 'Edit Lokasi Kerja - ' + existing.kodeLokasi : 'Tambah Lokasi Kerja';
+    document.getElementById('lkIsEdit').value = existing ? '1' : '0';
+    document.getElementById('lkKodeLokasi').value = existing ? existing.kodeLokasi : '';
+    document.getElementById('lkKodeLokasi').disabled = false;
+    document.getElementById('lkKodeLama').value = existing ? existing.kodeLokasi : '';
+    document.getElementById('lkNamaLokasi').value = existing ? existing.namaLokasi : '';
+    document.getElementById('lkJadwalKerja').value = existing ? existing.jadwalKerja : '';
+    document.getElementById('lkJamKerja').value = existing ? existing.jamKerja : '';
+    document.getElementById('lkHariOff').value = existing ? existing.hariOff : '';
+    document.getElementById('lkPembagiHariKerja').value = existing ? existing.pembagiHariKerja : 25;
+    document.getElementById('lkTipeLokasi').value = existing ? (existing.tipeLokasi || 'Store') : 'Store';
+
+    openModal('modalLokasiKerja');
+  }
+
+  function submitLokasiKerja(e) {
+    e.preventDefault();
+    const data = {
+      kodeLokasi: document.getElementById('lkKodeLokasi').value.trim(),
+      kodeLama: document.getElementById('lkKodeLama').value.trim(),
+      namaLokasi: document.getElementById('lkNamaLokasi').value.trim(),
+      jadwalKerja: document.getElementById('lkJadwalKerja').value.trim(),
+      jamKerja: document.getElementById('lkJamKerja').value.trim(),
+      hariOff: document.getElementById('lkHariOff').value.trim(),
+      pembagiHariKerja: Number(document.getElementById('lkPembagiHariKerja').value) || 25,
+      tipeLokasi: document.getElementById('lkTipeLokasi').value || 'Store'
+    };
+    const kodeAsal = data.kodeLama || '';
+    if (__mkLokasi.some(l => String(l.kodeLokasi).trim().toLowerCase() === data.kodeLokasi.toLowerCase() && String(l.kodeLokasi).trim() !== kodeAsal)) {
+      alert('Kode lokasi ' + data.kodeLokasi + ' sudah ada. Gunakan kode lain, atau klik tombol "Lokasi" pada lokasi tersebut untuk mengeditnya.');
+      return;
+    }
+    if (kodeAsal && kodeAsal !== data.kodeLokasi && !confirm('Kode lokasi akan diubah dari ' + kodeAsal + ' menjadi ' + data.kodeLokasi + '.\n\nSemua karyawan, data absensi, dan hak akses lokasi dengan kode lama ikut diperbarui. Lanjutkan?')) return;
+    google.script.run.withSuccessHandler(res => {
+      alert(res.message);
+      if (res.success) {
+        closeModal('modalLokasiKerja');
+        document.getElementById('lkKodeLokasi').disabled = false;
+        loadMasterKaryawan();
+      }
+    }).saveLokasiKerja(data);
+  }
+
+
+  
+  // ---------------- INPUT DATA BULANAN ----------------
+  // Cache hasil load Input Data Bulanan supaya ganti filter lokasi tidak perlu fetch ulang ke server
+  let __pinActiveList = [];
+  let __pinAdms = {};
+  let __pinLokasiNames = {};
+
+
+  function syncAdmsInputAction() {
+    const periodeVal = document.getElementById('pinPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(periodeVal);
+    const lokasiPilih = document.getElementById('pinLokasi').value;
+    // Dipilih satu lokasi -> hanya lokasi itu; "Semua Lokasi" -> semua lokasi yang boleh diakses akun ini (Admin: semua)
+    const kodeKirim = lokasiPilih ? [lokasiPilih] : (currentUser && currentUser.lokasiAkses ? currentUser.lokasiAkses : null);
+    const labelLokasi = lokasiPilih ? ('lokasi ' + lokasiPilih) : (kodeKirim ? ('semua lokasi akses Anda (' + kodeKirim.length + ' lokasi)') : 'SEMUA lokasi (proses lebih lama)');
+    if (!confirm('Sync absensi dari mesin ADMS untuk ' + labelLokasi + ' pada periode ini, lalu isi Hari Kerja Aktual & Datang Terlambat di Input Data Bulanan?\n\nProses bisa memakan waktu beberapa menit.')) return;
+    const btn = document.getElementById('btnSyncAdmsInput');
+    const awal = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Syncing...';
+    const selesai = () => { btn.disabled = false; btn.innerHTML = awal; };
+    google.script.run
+      .withFailureHandler(err => { selesai(); alert('Gagal: ' + (err && err.message ? err.message : err)); })
+      .withSuccessHandler(res => {
+        selesai();
+        let msg = res.message;
+        if (res.errors && res.errors.length) {
+          msg += '\n\n' + res.errors.length + ' badge dilewati (belum ada di Data Master Karyawan):\n' + res.errors.slice(0, 10).join('\n');
+          if (res.errors.length > 10) msg += '\n... dan ' + (res.errors.length - 10) + ' lainnya.';
+        }
+        alert(msg);
+        loadPayrollInputUI();
+      })
+      .syncDanTarikAdms(bulan, tahun, currentUser ? currentUser.username : '', kodeKirim);
+  }
+
+  function loadPayrollInputUI() {
+    const periodeVal = document.getElementById('pinPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(periodeVal);
+    const tbody = document.getElementById('tblPayrollInputBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Memuat data...</td></tr>';
+
+    const showError = (label, err) => {
+      console.error(label + ' gagal:', err);
+      tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-red-500">Gagal memuat data: ' + (err && err.message ? err.message : err) + '</td></tr>';
+    };
+
+    google.script.run
+      .withFailureHandler(err => showError('getMasterGajiKaryawan (input)', err))
+      .withSuccessHandler(masterList => {
+        masterList = filterByKodeLokasi_(masterList);
+        __masterGajiCache = masterList;
+        __pinActiveList = masterList.filter(k => k.statusAktif !== 'Nonaktif' && k.statusAktif !== 'Menunggu Data');
+
+        google.script.run
+          .withFailureHandler(err => showError('getLokasiKerjaList (input)', err))
+          .withSuccessHandler(lokasiList => {
+            __pinLokasiNames = {};
+            filterLokasiList_(lokasiList).forEach(l => { __pinLokasiNames[String(l.kodeLokasi).trim()] = l.namaLokasi; });
+
+            google.script.run
+              .withFailureHandler(err => showError('getPayrollInput', err))
+              .withSuccessHandler(inputList => {
+                inputList = inputList || [];
+                __payrollInputCache = {};
+                inputList.forEach(inp => { __payrollInputCache[String(inp.idKaryawan).trim()] = inp; });
+                populatePayrollInputLokasiFilter();
+                google.script.run
+                  .withFailureHandler(() => { __pinAdms = {}; renderPayrollInputTable(); })
+                  .withSuccessHandler(rk => {
+                    __pinAdms = {}; (rk || []).forEach(r => { __pinAdms[String(r.idKaryawan).trim()] = r; });
+                    renderPayrollInputTable();
+                  })
+                  .getAbsensiRekap(bulan, tahun);
+              })
+              .getPayrollInput(bulan, tahun);
+          })
+          .getLokasiKerjaList();
+      })
+      .getMasterGajiKaryawan();
+  }
+
+  // Isi dropdown Lokasi Kerja hanya dengan lokasi yang punya karyawan aktif (+ jumlahnya),
+  // dan pertahankan pilihan lokasi yang sedang aktif kalau masih ada.
+  function populatePayrollInputLokasiFilter() {
+    const sel = document.getElementById('pinLokasi');
+    const current = sel.value;
+    const counts = {};
+    __pinActiveList.forEach(k => {
+      const kode = String(k.kodeLokasi).trim();
+      counts[kode] = (counts[kode] || 0) + 1;
+    });
+    const kodes = Object.keys(counts).sort();
+    sel.innerHTML = '<option value="">Semua Lokasi (' + __pinActiveList.length + ' karyawan)</option>' +
+      kodes.map(kode => {
+        const nama = __pinLokasiNames[kode] ? ' - ' + __pinLokasiNames[kode] : '';
+        return '<option value="' + kode + '">' + kode + nama + ' (' + counts[kode] + ')</option>';
+      }).join('');
+    sel.value = counts[current] ? current : '';
+
+    const dl = document.getElementById('pinNamaList');
+    if (dl) {
+      dl.innerHTML = __pinActiveList.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))
+        .map(k => '<option value="' + String(k.nama).replace(/"/g, '&quot;') + '">' + k.idKaryawan + ' - ' + k.kodeLokasi + '</option>').join('');
+    }
+  }
+
+  // Daftar karyawan aktif setelah filter Lokasi + Cari Nama/ID (dipakai tabel & export Excel)
+  function pinFilteredList_() {
+    const filterKode = document.getElementById('pinLokasi').value;
+    const q = (document.getElementById('pinCari').value || '').trim().toLowerCase();
+    return __pinActiveList.filter(k =>
+      (!filterKode || String(k.kodeLokasi).trim() === filterKode) &&
+      (!q || String(k.nama).toLowerCase().includes(q) || String(k.idKaryawan).toLowerCase().includes(q)));
+  }
+
+  // Render tabel dari cache sesuai filter lokasi; dikelompokkan per lokasi dengan header ringkasan.
+  function renderPayrollInputTable() {
+    const tbody = document.getElementById('tblPayrollInputBody');
+    const filterKode = document.getElementById('pinLokasi').value;
+    const summary = document.getElementById('pinSummary');
+
+    const list = pinFilteredList_();
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">' +
+        (__pinActiveList.length ? 'Tidak ada karyawan aktif di lokasi ini.' : 'Belum ada karyawan aktif di Data Master Karyawan.') + '</td></tr>';
+      summary.textContent = '';
+      return;
+    }
+
+    // Kelompokkan per Kode Lokasi
+    const groups = {};
+    list.forEach(k => {
+      const kode = String(k.kodeLokasi).trim();
+      (groups[kode] = groups[kode] || []).push(k);
+    });
+
+    let totalTerisi = 0;
+    const rowHtml = k => {
+      const inp = __payrollInputCache[String(k.idKaryawan).trim()];
+      if (inp) totalTerisi++;
+      return `
+        <tr class="border-b hover:bg-slate-50">
+          <td class="px-4 py-3 font-bold pl-8">${k.nama}</td>
+          <td class="px-4 py-3">${k.kodeLokasi}</td>
+          <td class="px-4 py-3">${inp ? inp.hariKerjaAktual : '-'}${(() => { const a = __pinAdms[String(k.idKaryawan).trim()]; if (!a) return ''; const beda = !inp || Number(inp.hariKerjaAktual) !== a.hariHadir; return ` <span class="ml-1 px-2 py-0.5 rounded text-[10px] font-bold ${beda ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}" title="Hari hadir menurut ADMS">ADMS: ${a.hariHadir}</span>`; })()}</td>
+          <td class="px-4 py-3">${inp ? (Number(inp.jumlahAlpa) + Number(inp.jumlahSakitTanpaSurat) + Number(inp.jumlahIzin)) : '-'}</td>
+          <td class="px-4 py-3">${inp ? (Number(inp.jumlahCuti) + Number(inp.jumlahSakitDenganSurat)) : '-'}</td>
+          <td class="px-4 py-3">${inp ? (Number(inp.event || 0) + ' / ' + Number(inp.perjalananDinas || 0) + ' / ' + Number(inp.penggantiHari || 0)) : '-'}</td>
+          <td class="px-4 py-3 text-center">
+            <button onclick="openModalPayrollInput('${k.idKaryawan}')" class="px-2 py-1 ${inp ? 'bg-slate-100 hover:bg-slate-200 text-slate-600' : 'bg-amber-100 hover:bg-amber-200 text-amber-700'} rounded text-[10px] font-bold">
+              <i class="fa-solid ${inp ? 'fa-pen' : 'fa-plus'}"></i> ${inp ? 'Edit' : 'Isi Data'}
+            </button>
+          </td>
+        </tr>
+      `;
+    };
+
+    tbody.innerHTML = Object.keys(groups).sort().map(kode => {
+      const members = groups[kode].slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)));
+      const terisi = members.filter(k => __payrollInputCache[String(k.idKaryawan).trim()]).length;
+      const lengkap = terisi === members.length;
+      const nama = __pinLokasiNames[kode] ? ' - ' + __pinLokasiNames[kode] : '';
+      const header = `
+        <tr class="bg-slate-50 border-b border-t">
+          <td colspan="7" class="px-4 py-2 text-[11px] font-bold text-slate-700">
+            <i class="fa-solid fa-location-dot text-brand-500 mr-1"></i>${kode}${nama}
+            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold ${lengkap ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${terisi}/${members.length} sudah diisi</span>
+          </td>
+        </tr>`;
+      return header + members.map(rowHtml).join('');
+    }).join('');
+
+    summary.textContent = totalTerisi + ' dari ' + list.length + ' karyawan sudah diisi';
+  }
+
+  // ---------------- EXPORT EXCEL INPUT DATA BULANAN ----------------
+  // Mengikuti filter di toolbar: Lokasi Kerja (satu lokasi) dan/atau Cari Nama/ID (per karyawan).
+  // Tanpa filter = semua lokasi, otomatis 1 sheet per lokasi + sheet Ringkasan.
+  async function exportInputBulananExcel() {
+    if (typeof ExcelJS === 'undefined') { alert('Library Excel belum termuat. Pastikan koneksi internet aktif lalu muat ulang halaman.'); return; }
+    const periodeVal = document.getElementById('pinPeriode').value;
+    if (!periodeVal) { alert('Pilih periode terlebih dahulu.'); return; }
+    if (!__pinActiveList.length) { alert('Data belum dimuat. Klik "Muat Data Karyawan" dahulu.'); return; }
+    // Hanya karyawan yang sudah punya hasil Input Data Bulanan (tanpa data master/komponen gaji)
+    const list = pinFilteredList_().filter(k => __payrollInputCache[String(k.idKaryawan).trim()]);
+    if (!list.length) { alert('Belum ada data Input Data Bulanan yang terisi untuk filter saat ini.'); return; }
+
+    const btn = document.getElementById('btnExportInput');
+    const awal = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Menyiapkan...';
+    try {
+      const { bulan, tahun } = splitPeriode(periodeVal);
+      const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const rng = getPeriodeCutoffRangeClient(bulan, tahun);
+      const filterKode = document.getElementById('pinLokasi').value;
+      const q = (document.getElementById('pinCari').value || '').trim();
+      const num = v => Number(v) || 0;
+      const namaLokasi = kode => __pinLokasiNames[kode] ? kode + ' - ' + __pinLokasiNames[kode] : kode;
+      const inpOf = k => __payrollInputCache[String(k.idKaryawan).trim()] || null;
+      const admsOf = k => __pinAdms[String(k.idKaryawan).trim()] || null;
+
+      // g = grup header, h = judul kolom, w = lebar, t = tipe ('rp' rupiah | 'int' angka | 'txt'), sum = ikut total
+      const COLS = [
+        { g: 'IDENTITAS', h: 'No', w: 5, t: 'int', get: (k, i, idx) => idx + 1 },
+        { g: 'IDENTITAS', h: 'ID Karyawan', w: 14, t: 'txt', get: k => k.idKaryawan },
+        { g: 'IDENTITAS', h: 'Nama', w: 28, t: 'txt', get: k => k.nama },
+        { g: 'IDENTITAS', h: 'Jabatan', w: 22, t: 'txt', get: k => k.jabatan || '-' },
+        { g: 'IDENTITAS', h: 'Kode Lokasi', w: 13, t: 'txt', get: k => k.kodeLokasi },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Hari Kerja Aktual', w: 11, t: 'int', sum: true, get: (k, i) => i ? num(i.hariKerjaAktual) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Hadir (ADMS)', w: 10, t: 'int', get: k => { const a = admsOf(k); return a ? num(a.hariHadir) : null; } },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Alpa', w: 8, t: 'int', sum: true, get: (k, i) => i ? num(i.jumlahAlpa) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Off', w: 8, t: 'int', sum: true, get: (k, i) => i ? num(i.jumlahSakitTanpaSurat) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Izin', w: 8, t: 'int', sum: true, get: (k, i) => i ? num(i.jumlahIzin) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Cuti', w: 8, t: 'int', sum: true, get: (k, i) => i ? num(i.jumlahCuti) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Cuti Khusus', w: 10, t: 'int', sum: true, get: (k, i) => i ? num(i.cutiKhusus) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Sakit Dgn Surat', w: 11, t: 'int', sum: true, get: (k, i) => i ? num(i.jumlahSakitDenganSurat) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Terlambat', w: 10, t: 'int', sum: true, get: (k, i) => i ? num(i.terlambat) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Pulang Cepat', w: 10, t: 'int', sum: true, get: (k, i) => i ? num(i.pulangCepat) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Event', w: 8, t: 'int', sum: true, get: (k, i) => i ? num(i.event) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Perjalanan Dinas (Luar Kota)', w: 13, t: 'int', sum: true, get: (k, i) => i ? num(i.perjalananDinas) : null },
+        { g: 'KEHADIRAN (HARI / KALI)', h: 'Pengganti Hari (PH)', w: 11, t: 'int', sum: true, get: (k, i) => i ? num(i.penggantiHari) : null },
+        { g: 'KETERANGAN', h: 'Catatan', w: 32, t: 'txt', get: (k, i) => (i && i.catatan) ? i.catatan : '' }
+      ];
+      const GROUP_COLOR = {
+        'IDENTITAS': 'FF1E3A5F', 'KEHADIRAN (HARI / KALI)': 'FF0F766E', 'KETERANGAN': 'FF475569'
+      };
+      const thin = { style: 'thin', color: { argb: 'FFCBD5E1' } };
+      const border = { top: thin, left: thin, bottom: thin, right: thin };
+      const lastCol = COLS.length;
+
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'Shigeru HR - PT Mideli Makmur Jaya';
+      wb.created = new Date();
+
+      const usedNames = {};
+      const sheetName = raw => {
+        let n = String(raw).replace(/[\\\/\?\*\[\]:]/g, '-').trim().slice(0, 31) || 'Sheet';
+        let base = n, c = 2;
+        while (usedNames[n.toLowerCase()]) { n = base.slice(0, 28) + ' ' + c++; }
+        usedNames[n.toLowerCase()] = true;
+        return n;
+      };
+
+      const periodeLabel = NAMA_BULAN[bulan - 1] + ' ' + tahun;
+      const cutoffLabel = 'Cutoff ' + rng.mulai + ' s.d. ' + rng.selesai;
+      const dicetak = new Date().toLocaleString('id-ID');
+
+      const addDataSheet = (name, subTitle, rows) => {
+        const ws = wb.addWorksheet(sheetName(name), {
+          views: [{ state: 'frozen', xSplit: 3, ySplit: 5, showGridLines: false }],
+          pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '4:5' }
+        });
+        COLS.forEach((c, ci) => { ws.getColumn(ci + 1).width = c.w; });
+
+        ws.mergeCells(1, 1, 1, lastCol);
+        const t1 = ws.getCell(1, 1);
+        t1.value = 'DATA INPUT BULANAN PAYROLL - PT MIDELI MAKMUR JAYA';
+        t1.font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
+        t1.alignment = { vertical: 'middle' };
+        ws.getRow(1).height = 24;
+        ws.mergeCells(2, 1, 2, lastCol);
+        ws.getCell(2, 1).value = 'Periode: ' + periodeLabel + '   |   ' + cutoffLabel;
+        ws.getCell(2, 1).font = { size: 10, color: { argb: 'FF334155' } };
+        ws.mergeCells(3, 1, 3, lastCol);
+        ws.getCell(3, 1).value = subTitle + '   |   Dicetak: ' + dicetak + '   |   ' + rows.length + ' karyawan';
+        ws.getCell(3, 1).font = { size: 10, italic: true, color: { argb: 'FF64748B' } };
+
+        // baris 4: grup header (merge kolom ssejenis), baris 5: judul kolom
+        let s = 0;
+        while (s < COLS.length) {
+          let e = s;
+          while (e + 1 < COLS.length && COLS[e + 1].g === COLS[s].g) e++;
+          if (e > s) ws.mergeCells(4, s + 1, 4, e + 1);
+          const gc = ws.getCell(4, s + 1);
+          gc.value = COLS[s].g;
+          for (let x = s; x <= e; x++) {
+            const cell = ws.getCell(4, x + 1);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GROUP_COLOR[COLS[s].g] } };
+            cell.border = border;
+          }
+          gc.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+          gc.alignment = { horizontal: 'center', vertical: 'middle' };
+          s = e + 1;
+        }
+        COLS.forEach((c, ci) => {
+          const cell = ws.getCell(5, ci + 1);
+          cell.value = c.h;
+          cell.font = { bold: true, size: 10, color: { argb: 'FF0F172A' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          cell.border = border;
+        });
+        ws.getRow(5).height = 32;
+
+        const totals = COLS.map(() => 0);
+        rows.forEach((k, idx) => {
+          const inp = inpOf(k);
+          const r = 6 + idx;
+          COLS.forEach((c, ci) => {
+            const v = c.get(k, inp, idx);
+            const cell = ws.getCell(r, ci + 1);
+            cell.value = (v === null || v === undefined || v === '') ? null : v;
+            cell.border = border;
+            cell.font = { size: 10 };
+            cell.alignment = { vertical: 'middle', horizontal: c.t === 'txt' ? 'left' : (c.t === 'rp' ? 'right' : 'center'), wrapText: c.h === 'Catatan' };
+            if (c.t === 'rp') cell.numFmt = '#,##0;[Red]-#,##0;"-"';
+            if (c.t === 'int' && c.h !== 'No') cell.numFmt = '0;[Red]-0;"-"';
+            if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            if (c.sum && typeof v === 'number') totals[ci] += v;
+          });
+        });
+
+        // baris total
+        const tr = 6 + rows.length;
+        ws.mergeCells(tr, 1, tr, 5);
+        COLS.forEach((c, ci) => {
+          const cell = ws.getCell(tr, ci + 1);
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+          cell.border = { top: { style: 'medium', color: { argb: 'FF334155' } }, left: thin, bottom: { style: 'medium', color: { argb: 'FF334155' } }, right: thin };
+          cell.font = { bold: true, size: 10 };
+          if (c.sum) {
+            cell.value = totals[ci];
+            cell.numFmt = c.t === 'rp' ? '#,##0' : '0';
+            cell.alignment = { horizontal: c.t === 'rp' ? 'right' : 'center', vertical: 'middle' };
+          }
+        });
+        ws.getCell(tr, 1).value = 'TOTAL';
+        ws.getCell(tr, 1).alignment = { horizontal: 'right', vertical: 'middle' };
+
+        ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: 5 + rows.length, column: lastCol } };
+        return ws;
+      };
+
+      // kelompokkan per lokasi
+      const groups = {};
+      list.forEach(k => { (groups[String(k.kodeLokasi).trim()] = groups[String(k.kodeLokasi).trim()] || []).push(k); });
+      const kodes = Object.keys(groups).sort();
+      kodes.forEach(kode => groups[kode].sort((a, b) => String(a.nama).localeCompare(String(b.nama))));
+
+      // sheet Ringkasan (hanya bila lebih dari satu lokasi)
+      if (kodes.length > 1) {
+        const ws = wb.addWorksheet(sheetName('Ringkasan'), { views: [{ showGridLines: false }], pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+        const heads = [['No', 5], ['Kode Lokasi', 14], ['Nama Lokasi', 30], ['Jumlah Karyawan (Terinput)', 14], ['Total Hadir', 11], ['Total Alpa', 10], ['Total Off & Sakit', 12], ['Total Izin', 10], ['Total Cuti', 10], ['Total Terlambat', 11]];
+        heads.forEach((h2, i) => { ws.getColumn(i + 1).width = h2[1]; });
+        ws.mergeCells(1, 1, 1, heads.length);
+        ws.getCell(1, 1).value = 'RINGKASAN INPUT DATA BULANAN - ' + periodeLabel.toUpperCase();
+        ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
+        ws.getRow(1).height = 24;
+        ws.mergeCells(2, 1, 2, heads.length);
+        ws.getCell(2, 1).value = cutoffLabel + '   |   Dicetak: ' + dicetak;
+        ws.getCell(2, 1).font = { size: 10, italic: true, color: { argb: 'FF64748B' } };
+        heads.forEach((h2, i) => {
+          const c = ws.getCell(4, i + 1);
+          c.value = h2[0]; c.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+          c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }; c.border = border;
+        });
+        ws.getRow(4).height = 32;
+        const tot = [0, 0, 0, 0, 0, 0, 0];
+        kodes.forEach((kode, idx) => {
+          const members = groups[kode];
+          const s = [0, 0, 0, 0, 0, 0];
+          members.forEach(k => {
+            const i = inpOf(k); if (!i) return;
+            s[0] += num(i.hariKerjaAktual); s[1] += num(i.jumlahAlpa); s[2] += num(i.jumlahSakitTanpaSurat) + num(i.jumlahSakitDenganSurat);
+            s[3] += num(i.jumlahIzin); s[4] += num(i.jumlahCuti) + num(i.cutiKhusus); s[5] += num(i.terlambat);
+          });
+          const vals = [idx + 1, kode, __pinLokasiNames[kode] || '-', members.length].concat(s);
+          vals.forEach((v, ci) => {
+            const c = ws.getCell(5 + idx, ci + 1);
+            c.value = v; c.border = border; c.font = { size: 10 };
+            c.alignment = { horizontal: ci === 1 || ci === 2 ? 'left' : 'center', vertical: 'middle' };
+            if (idx % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+          });
+          tot[0] += members.length; for (let z = 0; z < 6; z++) tot[z + 1] += s[z];
+        });
+        const tr = 5 + kodes.length;
+        ws.mergeCells(tr, 1, tr, 3);
+        for (let ci = 1; ci <= heads.length; ci++) {
+          const c = ws.getCell(tr, ci);
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+          c.border = { top: { style: 'medium', color: { argb: 'FF334155' } }, left: thin, bottom: { style: 'medium', color: { argb: 'FF334155' } }, right: thin };
+          c.font = { bold: true, size: 10 };
+        }
+        ws.getCell(tr, 1).value = 'TOTAL'; ws.getCell(tr, 1).alignment = { horizontal: 'right' };
+        tot.forEach((v, z) => {
+          const c = ws.getCell(tr, 4 + z); c.value = v;
+          c.alignment = { horizontal: 'center' };
+        });
+        ws.views = [{ state: 'frozen', ySplit: 4, showGridLines: false }];
+      }
+
+      // sheet data: satu karyawan -> sheet bernama karyawan; selain itu 1 sheet per lokasi
+      if (list.length === 1) {
+        const k = list[0];
+        addDataSheet(k.nama, 'Karyawan: ' + k.nama + ' (' + k.idKaryawan + ')   |   Lokasi: ' + namaLokasi(String(k.kodeLokasi).trim()), [k]);
+      } else {
+        kodes.forEach(kode => addDataSheet(kode, 'Lokasi: ' + namaLokasi(kode) + (q ? '   |   Filter nama: "' + q + '"' : ''), groups[kode]));
+      }
+
+      const safe = s => String(s).replace(/[^A-Za-z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '');
+      let suffix = 'Semua_Lokasi';
+      if (list.length === 1) suffix = safe(list[0].nama);
+      else if (q && filterKode) suffix = safe(filterKode) + '_' + safe(q);
+      else if (q) suffix = 'Cari_' + safe(q);
+      else if (filterKode) suffix = safe(filterKode);
+      const fname = 'Input_Data_Bulanan_' + tahun + '-' + String(bulan).padStart(2, '0') + '_' + suffix + '.xlsx';
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    } catch (err) {
+      console.error('Export Excel gagal:', err);
+      alert('Gagal membuat file Excel: ' + (err && err.message ? err.message : err));
+    } finally {
+      btn.disabled = false; btn.innerHTML = awal;
+    }
+  }
+
+  // ---- Input harian (checklist per tanggal) ----
+  const PIN_STATUS = [['Hadir', 'Hadir'], ['Alpa', 'Alpa'], ['Sakit Tanpa Surat', 'Off'], ['Izin', 'Izin'], ['Cuti', 'Cuti Resmi'], ['Cuti Khusus', 'Cuti Khusus'], ['Sakit Dengan Surat', 'Sakit Dengan Surat Dokter']];
+  const PIN_FLAGS = [['terlambat', 'Terlambat'], ['pulangCepat', 'Pulang Cepat'], ['event', 'Event'], ['dinas', 'Perj. Dinas'], ['ph', 'PH']];
+  let __pinDaily = { id: '', rows: [], adms: {}, bulanan: null, terSimpan: false };
+
+  function pinBuatTanggal_(mulai, selesai) {
+    const out = [];
+    const p = s => { const x = s.split('-'); return new Date(Number(x[0]), Number(x[1]) - 1, Number(x[2])); };
+    const pad = n => String(n).padStart(2, '0');
+    for (let d = p(mulai), end = p(selesai); d <= end; d.setDate(d.getDate() + 1)) out.push(d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()));
+    return out;
+  }
+
+  function openModalPayrollInput(idKaryawan) {
+    const karyawan = __masterGajiCache.find(k => String(k.idKaryawan) === String(idKaryawan));
+    if (!karyawan) { alert('Data karyawan tidak ditemukan. Klik "Muat Data Karyawan" dahulu.'); return; }
+    const { bulan, tahun } = splitPeriode(document.getElementById('pinPeriode').value);
+
+    document.getElementById('formPayrollInput').reset();
+    document.getElementById('pinNamaLabel').textContent = karyawan.nama + ' - ' + karyawan.kodeLokasi;
+    document.getElementById('pinIdKaryawan').value = idKaryawan;
+    document.getElementById('pinNama').value = karyawan.nama;
+    document.getElementById('pinAdmsInfo').textContent = 'Memuat data harian...';
+    document.getElementById('pinLegacyInfo').classList.add('hidden');
+    document.getElementById('pinDailyBody').innerHTML = '<tr><td colspan="14" class="px-4 py-6 text-center text-slate-400">Memuat...</td></tr>';
+    document.getElementById('pinTotals').innerHTML = '';
+    document.getElementById('pinDailyHead').innerHTML = PIN_STATUS.map((s, i) => `<th class="px-2 py-1 text-center ${i === 0 ? 'border-l' : ''}" title="${s[0]}">${s[1]}</th>`).join('') +
+      PIN_FLAGS.map((f, i) => `<th class="px-2 py-1 text-center ${i === 0 ? 'border-l' : ''}">${f[1]}</th>`).join('');
+    openModal('modalPayrollInput');
+
+    google.script.run
+      .withFailureHandler(err => { document.getElementById('pinDailyBody').innerHTML = '<tr><td colspan="14" class="px-4 py-6 text-center text-red-500">Gagal memuat: ' + (err && err.message ? err.message : err) + '</td></tr>'; })
+      .withSuccessHandler(res => {
+        const saved = {}; (res.hari || []).forEach(x => { saved[x.tanggal] = x; });
+        const adms = {}; (res.adms || []).forEach(x => { adms[x.tanggal] = x; });
+        const terSimpan = (res.hari || []).length > 0;
+        const rows = pinBuatTanggal_(res.mulai, res.selesai).map(tgl => {
+          const s = saved[tgl];
+          if (s) return { tanggal: tgl, status: s.status || '', terlambat: !!s.terlambat, pulangCepat: !!s.pulangCepat, event: !!s.event, dinas: !!s.dinas, ph: !!s.ph };
+          const a = adms[tgl];
+          // Belum pernah disimpan harian: prefill Hadir (& Terlambat) dari ADMS
+          if (!terSimpan && a) return { tanggal: tgl, status: 'Hadir', terlambat: a.status === 'Terlambat', pulangCepat: false, event: false, dinas: false, ph: false };
+          return { tanggal: tgl, status: '', terlambat: false, pulangCepat: false, event: false, dinas: false, ph: false };
+        });
+        __pinDaily = { id: idKaryawan, rows, adms, bulanan: res.bulanan, terSimpan };
+        document.getElementById('pinCatatan').value = res.bulanan ? (res.bulanan.catatan || '') : '';
+
+        const jumlahAdms = Object.keys(adms).length;
+        const box = document.getElementById('pinAdmsInfo');
+        if (jumlahAdms) {
+          box.className = 'text-[11px] rounded-lg border px-3 py-2 bg-emerald-50 border-emerald-200 text-emerald-800';
+          box.innerHTML = '<i class="fa-solid fa-fingerprint mr-1"></i>Periode ' + res.mulai + ' s.d. ' + res.selesai + ' - ADMS mencatat <b>' + jumlahAdms + '</b> hari hadir.' + (!terSimpan ? ' Kolom Hadir sudah terisi otomatis dari ADMS (belum disimpan).' : '');
+        } else {
+          box.className = 'text-[11px] rounded-lg border px-3 py-2 bg-slate-50 text-slate-500';
+          box.textContent = 'Periode ' + res.mulai + ' s.d. ' + res.selesai + ' - belum ada data ADMS untuk karyawan ini. Isi checklist secara manual.';
+        }
+
+        const b = res.bulanan;
+        if (!terSimpan && b && (b.jumlahAlpa || b.jumlahSakitTanpaSurat || b.jumlahIzin || b.jumlahCuti || b.cutiKhusus || b.jumlahSakitDenganSurat || b.pulangCepat || b.event || b.perjalananDinas || b.penggantiHari)) {
+          const li = document.getElementById('pinLegacyInfo');
+          li.classList.remove('hidden');
+          li.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>Bulan ini sebelumnya diisi sebagai <b>total</b> (Hadir ' + b.hariKerjaAktual + ', Alpa ' + b.jumlahAlpa + ', Off ' + b.jumlahSakitTanpaSurat + ', Izin ' + b.jumlahIzin + ', Cuti ' + b.jumlahCuti + ', Cuti Khusus ' + (b.cutiKhusus || 0) + ', Sakit D.S ' + b.jumlahSakitDenganSurat + '). Menyimpan checklist harian akan <b>menggantikan</b> total tersebut dengan hasil hitungan dari tabel.';
+        }
+        renderPinDaily();
+      })
+      .getInputHarianKaryawan(idKaryawan, bulan, tahun);
+  }
+
+  function renderPinDaily() {
+    const hari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    const bln = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    document.getElementById('pinDailyBody').innerHTML = __pinDaily.rows.map((r, i) => {
+      const x = r.tanggal.split('-');
+      const d = new Date(Number(x[0]), Number(x[1]) - 1, Number(x[2]));
+      const weekend = d.getDay() === 0 || d.getDay() === 6;
+      const a = __pinDaily.adms[r.tanggal];
+      const admsCell = a ? `<span class="px-1.5 py-0.5 rounded ${a.status === 'Terlambat' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'} font-semibold" title="${a.status}">${a.jamMasuk ? String(a.jamMasuk).substring(0, 5) : '--'} - ${a.jamPulang ? String(a.jamPulang).substring(0, 5) : '--'}</span>` : '<span class="text-slate-300">-</span>';
+      const hadirKunci = (s0) => s0 === 'Hadir' && !a && r.status !== 'Hadir' && !(currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR'));
+      const stat = PIN_STATUS.map((s, k) => `<td class="px-2 py-1 text-center ${k === 0 ? 'border-l' : ''}"><input type="checkbox" class="w-4 h-4 accent-sky-600 disabled:opacity-40 disabled:cursor-not-allowed" ${hadirKunci(s[0]) ? 'disabled title="Tidak ada data ADMS - hanya Admin/HRD yang bisa mencentang Hadir manual"' : ''} ${r.status === s[0] ? 'checked' : ''} onchange="pinSetStatus(${i}, '${s[0]}', this.checked)" title="${s[0]}"></td>`).join('');
+      const flags = PIN_FLAGS.map((f, k) => `<td class="px-2 py-1 text-center ${k === 0 ? 'border-l' : ''}"><input type="checkbox" class="w-4 h-4 accent-emerald-600" ${r[f[0]] ? 'checked' : ''} onchange="pinSetFlag(${i}, '${f[0]}', this.checked)" title="${f[1]}"></td>`).join('');
+      return `<tr class="border-b ${weekend ? 'bg-rose-50/50' : ''}"><td class="px-3 py-1 whitespace-nowrap font-semibold ${weekend ? 'text-rose-600' : 'text-slate-700'}">${hari[d.getDay()]}, ${x[2]} ${bln[Number(x[1]) - 1]}</td><td class="px-3 py-1 whitespace-nowrap">${admsCell}</td>${stat}${flags}</tr>`;
+    }).join('');
+    updatePinTotals();
+  }
+
+  function pinSetStatus(i, status, on) {
+    if (on && status === 'Hadir' && !__pinDaily.adms[__pinDaily.rows[i].tanggal] && !(currentUser && (currentUser.role === 'Admin' || currentUser.role === 'HR'))) { renderPinDaily(); return; }
+    __pinDaily.rows[i].status = on ? status : ''; renderPinDaily();
+  }
+  function pinSetFlag(i, key, on) { __pinDaily.rows[i][key] = !!on; updatePinTotals(); }
+
+  function pinTotal_() {
+    const t = { hadir: 0, alpa: 0, sts: 0, izin: 0, cuti: 0, ck: 0, sds: 0, terlambat: 0, pulangCepat: 0, event: 0, dinas: 0, ph: 0 };
+    __pinDaily.rows.forEach(r => {
+      if (r.status === 'Hadir') t.hadir++; else if (r.status === 'Alpa') t.alpa++; else if (r.status === 'Sakit Tanpa Surat') t.sts++;
+      else if (r.status === 'Izin') t.izin++; else if (r.status === 'Cuti') t.cuti++; else if (r.status === 'Cuti Khusus') t.ck++; else if (r.status === 'Sakit Dengan Surat') t.sds++;
+      if (r.terlambat) t.terlambat++; if (r.pulangCepat) t.pulangCepat++; if (r.event) t.event++; if (r.dinas) t.dinas++; if (r.ph) t.ph++;
+    });
+    return t;
+  }
+
+  function updatePinTotals() {
+    const t = pinTotal_();
+    const chip = (lbl, v, cls) => `<span class="px-2 py-1 rounded-lg border ${v ? cls : 'bg-slate-50 border-slate-200 text-slate-400'} font-semibold">${lbl}: <b>${v}</b></span>`;
+    document.getElementById('pinTotals').innerHTML =
+      chip('Hadir', t.hadir, 'bg-emerald-50 border-emerald-200 text-emerald-700') + chip('Alpa', t.alpa, 'bg-red-50 border-red-200 text-red-700') +
+      chip('Off', t.sts, 'bg-red-50 border-red-200 text-red-700') + chip('Izin', t.izin, 'bg-red-50 border-red-200 text-red-700') +
+      chip('Cuti Resmi', t.cuti, 'bg-sky-50 border-sky-200 text-sky-700') + chip('Cuti Khusus', t.ck, 'bg-sky-50 border-sky-200 text-sky-700') + chip('Sakit Dgn Surat', t.sds, 'bg-sky-50 border-sky-200 text-sky-700') +
+      chip('Terlambat', t.terlambat, 'bg-amber-50 border-amber-200 text-amber-700') + chip('Pulang Cepat', t.pulangCepat, 'bg-amber-50 border-amber-200 text-amber-700') +
+      chip('Event', t.event, 'bg-slate-100 border-slate-300 text-slate-700') + chip('Perj. Dinas', t.dinas, 'bg-slate-100 border-slate-300 text-slate-700') + chip('PH', t.ph, 'bg-slate-100 border-slate-300 text-slate-700');
+  }
+
+  // Centang Hadir pada hari yang punya data ADMS dan statusnya masih kosong
+  function pinIsiDariAdms() {
+    let n = 0;
+    __pinDaily.rows.forEach(r => {
+      const a = __pinDaily.adms[r.tanggal];
+      if (a && !r.status) { r.status = 'Hadir'; if (a.status === 'Terlambat') r.terlambat = true; n++; }
+    });
+    renderPinDaily();
+    if (!n) alert('Tidak ada hari baru yang bisa diisi dari ADMS (semua hari ADMS sudah punya status).');
+  }
+
+  function pinKosongkan() {
+    if (!confirm('Kosongkan semua checklist harian karyawan ini?')) return;
+    __pinDaily.rows.forEach(r => { r.status = ''; r.terlambat = r.pulangCepat = r.event = r.dinas = r.ph = false; });
+    renderPinDaily();
+  }
+
+  function submitPayrollInput(e) {
+    e.preventDefault();
+    const { bulan, tahun } = splitPeriode(document.getElementById('pinPeriode').value);
+    const btn = document.getElementById('btnSavePin');
+    const awal = btn.textContent; btn.disabled = true; btn.textContent = 'Menyimpan...';
+    const data = {
+      bulan, tahun,
+      idKaryawan: document.getElementById('pinIdKaryawan').value,
+      hari: __pinDaily.rows,
+      catatan: document.getElementById('pinCatatan').value,
+      inputBy: currentUser ? currentUser.username : ''
+    };
+    google.script.run
+      .withFailureHandler(err => { btn.disabled = false; btn.textContent = awal; alert('Gagal menyimpan: ' + (err && err.message ? err.message : err)); })
+      .withSuccessHandler(res => {
+        btn.disabled = false; btn.textContent = awal;
+        alert(res.message);
+        if (res.success) { closeModal('modalPayrollInput'); loadPayrollInputUI(); }
+      })
+      .saveInputHarian(data);
+  }
+
+
+  
+  
+
+
+  
+  </script>
+</body>
+</html>
