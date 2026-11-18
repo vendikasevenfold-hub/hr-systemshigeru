@@ -5,10 +5,11 @@
   "description": "Shigeru HR - PT Mideli Makmur Jaya. Self-hosted (Node.js + PostgreSQL), dipindahkan dari Google Apps Script.",
   "main": "server/index.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.6"
   },
   "scripts": {
     "start": "node server/index.js",
+    "start:vps": "node --env-file=.env server/index.js",
     "dev": "node --watch server/index.js",
     "import-xlsx": "node scripts/import-xlsx.js",
     "test": "node --test test/*.test.js"

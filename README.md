@@ -63,8 +63,14 @@ docker compose logs -f app     # lihat log server
 docker compose exec db pg_dump -U shigeru_hr shigeru_hr > backup.sql
 ```
 
+## Memasang di VPS Windows Server (bersama GLPI)
+
+Lihat [deploy/windows/PANDUAN-VPS.md](deploy/windows/PANDUAN-VPS.md).
+
 ## Catatan
 
+- Semua fungsi server wajib membawa token login yang sah (header `X-HR-Token`), kecuali
+  `loginUser`, `validateSession`, dan `logoutSession`. Tanpa token, server menjawab 401.
 - Server menjalankan satu proses Node.js; jangan menjalankan lebih dari satu container `app`
   terhadap database yang sama.
 - Sesi login disimpan di memori, jadi semua user perlu login ulang setelah server di-restart.
