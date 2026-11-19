@@ -30,27 +30,14 @@
     .stacked-cell { display: flex; flex-direction: column; }
     .sidebar-item-active { background-color: #f0f9ff; color: #008bca; font-weight: 600; border-right: 4px solid #008bca; }
 
-    /* Brand Shigeru — sama dengan Shigeru Console (shigeru-platform):
-       cakram Shigeru Red dengan glyph 繁, "Shigeru" tebal + sub mono huruf kapital. */
-    .brand { display: flex; align-items: center; gap: 10px; }
-    .brand-mark {
-      width: 30px; height: 30px; flex: none; border-radius: 50%;
-      background: #f54442; color: #ffffff;
-      display: grid; place-items: center;
-      font-family: 'Source Sans 3', 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-      font-size: 15px; font-weight: 700; line-height: 1;
-    }
-    .brand-glyph { display: block; font-style: normal; transform: translate(1px, 1px); }
-    .brand-name { font-family: 'Source Sans 3', 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
-    .brand-sub { font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f6f6f; }
-    .authbrand { justify-content: center; gap: 12px; }
-    .authbrand .brand-mark { width: 38px; height: 38px; font-size: 19px; }
-    .authbrand .brand-name { font-size: 20px; color: #333333; }
-    header .brand-sub { color: rgba(255, 255, 255, 0.8); }
+    /* Logo Shigeru (public/assets/logo-shigeru.png, PNG transparan, rasio 3,64 : 1) */
+    .login-logo { display: block; width: 240px; max-width: 100%; height: auto; margin: 0 auto; }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    /* Header biru: pakai versi logo bertulisan putih (logo-shigeru-putih.png), tanpa latar */
+    .header-logo { display: block; height: 32px; width: auto; }
+    .header-app-label { font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
+    @media (max-width: 480px) { .header-app-label { display: none; } }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
 
@@ -58,12 +45,10 @@
   <div id="loginView" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-brand-900 via-slate-900 to-sky-900">
     <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
       <div class="text-center mb-8">
-        <h1 class="brand authbrand mb-2">
-          <span class="brand-mark" aria-hidden="true"><i class="brand-glyph">繁</i></span>
-          <span>
-            <span class="brand-name">Shigeru</span> <span class="brand-sub">HR</span>
-          </span>
+        <h1 class="mb-3">
+          <img src="/assets/logo-shigeru.png" alt="Shigeru - Japanese Fresh Deli" class="login-logo">
         </h1>
+        <p class="text-sm font-semibold text-slate-700">Portal HR</p>
         <p class="text-xs text-slate-500 mt-1">PT Mideli Makmur Jaya</p>
       </div>
 
@@ -91,11 +76,9 @@
     <header class="bg-brand-500 text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow">
       <div class="flex items-center space-x-4">
         <button onclick="toggleSidebar()" class="text-white hover:text-slate-200 text-lg"><i class="fa-solid fa-bars"></i></button>
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true"><i class="brand-glyph">繁</i></span>
-          <span>
-            <span class="brand-name">Shigeru</span> <span class="brand-sub">HR</span>
-          </span>
+        <div class="header-brand">
+          <img src="/assets/logo-shigeru-putih.png" alt="Shigeru" class="header-logo">
+          <span class="header-app-label">HR</span>
         </div>
       </div>
 
