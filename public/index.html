@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <title>Shigeru HR - PT Mideli Makmur Jaya</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Favicon: cap 繁 dari logo Shigeru -->
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <meta name="theme-color" content="#008bca">
   <!-- Pengganti google.script.run: memanggil server Node.js (lihat public/gas-client.js) -->
   <script src="/gas-client.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -37,6 +43,50 @@
     .header-logo { display: block; height: 32px; width: auto; }
     .header-app-label { font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
     @media (max-width: 480px) { .header-app-label { display: none; } }
+
+    /* ---------- Tata letak responsif (HP & tablet) ----------
+       >= 1024px : menu samping tetap terlihat; tombol ☰ menyembunyikan/menampilkannya
+                   (body.nav-collapsed) dan konten melebar penuh.
+       <  1024px : menu samping disembunyikan; tombol ☰ membukanya sebagai laci di atas
+                   konten (body.nav-open) dengan latar gelap yang bisa diketuk untuk menutup. */
+    #sidebarNav { transition: transform .25s ease, box-shadow .25s ease; }
+    #appMain { transition: margin-left .25s ease; min-width: 0; }
+    #navBackdrop { display: none; }
+    @media (min-width: 1024px) {
+      body.nav-collapsed #sidebarNav { transform: translateX(-100%); }
+      body.nav-collapsed #appMain { margin-left: 0; }
+    }
+    @media (max-width: 1023px) {
+      #sidebarNav { transform: translateX(-100%); width: min(280px, 85vw); }
+      body.nav-open #sidebarNav { transform: none; box-shadow: 0 10px 40px rgba(15, 23, 42, .35); }
+      body.nav-open #navBackdrop { display: block; position: fixed; inset: 56px 0 0 0; background: rgba(15, 23, 42, .45); z-index: 25; }
+      body.nav-open { overflow: hidden; }
+      #appMain { margin-left: 0; padding: 16px 12px 24px; }
+      /* Judul halaman tidak terlalu besar, tombol utama tidak menyempit */
+      #appMain section > div:first-child h3 { font-size: 1.05rem; }
+      /* Input >= 16px supaya iPhone tidak memperbesar layar saat kolom diketuk */
+      input:not([type=checkbox]):not([type=radio]), select, textarea { font-size: 16px !important; }
+      /* Jendela pop-up: jarak tepi lebih kecil, isi bisa digulir */
+      .fixed.inset-0.z-50 { padding: 8px !important; align-items: flex-start !important; overflow-y: auto; }
+      .fixed.inset-0.z-50 > div { margin: 8px 0; max-height: none !important; }
+      .fixed.inset-0.z-50 > div.p-6 { padding: 16px !important; }
+      .fixed.inset-0.z-50 .px-6 { padding-left: 16px !important; padding-right: 16px !important; }
+    }
+    @media (max-width: 639px) {
+      /* Form di jendela pop-up: kolom bertumpuk ke bawah */
+      .fixed.inset-0.z-50 form .grid-cols-3,
+      .fixed.inset-0.z-50 form .grid-cols-2 { grid-template-columns: minmax(0, 1fr) !important; }
+      /* Toolbar filter: setiap kolom isian & tombol selebar layar */
+      #appMain .flex-wrap.items-end > div, #appMain .flex-wrap.items-end > button { width: 100%; }
+      #appMain .flex-wrap.items-end input, #appMain .flex-wrap.items-end select { width: 100%; min-width: 0 !important; }
+      #appMain .flex-wrap.items-end > span { padding-bottom: 0; }
+      /* Petunjuk: tabel lebar bisa digeser ke samping */
+      #appMain .overflow-x-auto:has(> table[class*="min-w-"])::before {
+        content: "\2194  Geser tabel ke samping untuk melihat kolom lain";
+        display: block; position: sticky; left: 0; padding: 6px 12px; font-size: 11px; color: #64748b;
+        background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased">
@@ -75,7 +125,7 @@
     <!-- TOP HEADER BAR -->
     <header class="bg-brand-500 text-white h-14 flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-40 shadow">
       <div class="flex items-center space-x-4">
-        <button onclick="toggleSidebar()" class="text-white hover:text-slate-200 text-lg"><i class="fa-solid fa-bars"></i></button>
+        <button onclick="toggleSidebar()" aria-label="Buka / tutup menu" class="text-white hover:text-slate-200 text-lg w-9 h-9 -ml-2 flex items-center justify-center rounded-lg hover:bg-white/10"><i class="fa-solid fa-bars"></i></button>
         <div class="header-brand">
           <img src="/assets/logo-shigeru-putih.png" alt="Shigeru" class="header-logo">
           <span class="header-app-label">HR</span>
@@ -100,7 +150,8 @@
     <div class="flex pt-14 flex-1">
       
       <!-- LEFT SIDEBAR NAVIGATION -->
-      <aside id="sidebarNav" class="w-64 bg-white border-r border-slate-200 flex flex-col fixed top-14 bottom-0 left-0 z-30 transition-all duration-300">
+      <div id="navBackdrop" onclick="closeNavMobile_()"></div>
+      <aside id="sidebarNav" class="w-64 bg-white border-r border-slate-200 flex flex-col fixed top-14 bottom-0 left-0 z-30">
         <div class="p-4 border-b border-slate-100 flex items-center space-x-3 bg-slate-50">
           <div class="w-10 h-10 bg-brand-50 text-brand-500 rounded-full flex items-center justify-center text-lg font-bold">
             <i class="fa-solid fa-id-badge"></i>
@@ -155,7 +206,7 @@
       </aside>
 
       <!-- CONTENT CONTAINER -->
-      <main class="flex-1 ml-64 p-6 overflow-x-hidden">
+      <main id="appMain" class="flex-1 ml-64 p-6 overflow-x-hidden">
 
         <!-- 10. MODUL MANAJEMEN PENGGUNA (CREATE LOGIN USER) -->
 <section id="tab-users" class="tab-content hidden space-y-6">
@@ -1005,9 +1056,19 @@ function saveLembur(e) {
       document.getElementById('loginView').classList.remove('hidden');
     }
 
+    // Layar < 1024px: menu samping berupa laci (body.nav-open). Layar lebar: menu bisa disembunyikan (body.nav-collapsed).
+    const NAV_MOBILE_QUERY_ = window.matchMedia('(max-width: 1023px)');
     function toggleSidebar() {
-      document.getElementById('sidebarNav').classList.toggle('-translate-x-full');
+      if (NAV_MOBILE_QUERY_.matches) document.body.classList.toggle('nav-open');
+      else document.body.classList.toggle('nav-collapsed');
     }
+    function closeNavMobile_() { document.body.classList.remove('nav-open'); }
+    // Pilih menu di HP -> laci menutup sendiri
+    document.addEventListener('click', (e) => {
+      if (NAV_MOBILE_QUERY_.matches && e.target.closest('#sidebarNav button')) closeNavMobile_();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeNavMobile_(); });
+    NAV_MOBILE_QUERY_.addEventListener('change', closeNavMobile_);
 
     // Peta elemen sidebar/fitur -> modul & fitur kanonik (harus selaras dengan
     // MODULE_DEFINITIONS_ di Code.gs). Dipakai untuk menentukan show/hide
